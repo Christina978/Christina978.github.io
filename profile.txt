@@ -9,17 +9,17 @@ name=Christina Flaum
 title1=Student-ID: 323541
 title2=Master Msc Marketing Intelligence
 
-expertise=Internet Marketing, AI Applications, data Science
+expertise=Internet Marketing, AI Applications, Data Science
 
-education=bachelor Bsc Market research and Consumer psychology
+education=Bachelor Bsc market research and consumer psychology
 
 email=flaumchr@hs-pforzheim.de
 linkedin= 
 
-about1=completed training as an optician
-about2=
-about3
-about4=
+about1=Completed training as an optician
+about2=Internship at Tchibo
+about3= 
+about4= 
 
 phone=
 
