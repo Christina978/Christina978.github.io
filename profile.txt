@@ -14,7 +14,7 @@ expertise=Internet Marketing, AI Applications, Data Science
 education=Bachelor Bsc market research and consumer psychology
 
 email=flaumchr@hs-pforzheim.de
-linkedin= 
+linkedin=linkedin.com/in/christina-flaum-544984341
 
 about1=Completed training as an optician
 about2=Internship at Tchibo
