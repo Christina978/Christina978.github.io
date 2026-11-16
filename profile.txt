@@ -14,7 +14,6 @@ expertise=Internet Marketing, AI Applications, data Science
 education=bachelor Bsc Market research and Consumer psychology
 
 email=flaumchr@hs-pforzheim.de
-linkedin=-
 
 about1=
 about2=
