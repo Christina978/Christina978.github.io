@@ -16,7 +16,7 @@ education=bachelor Bsc Market research and Consumer psychology
 email=flaumchr@hs-pforzheim.de
 linkedin= 
 
-about1=
+about1=completed training as an optician
 about2=
 about3
 about4=
