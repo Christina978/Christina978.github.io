@@ -1,53 +1,837 @@
-Baue eine Web-Demo als einzelne index.html (HTML/CSS/JS, kein Build-Tool) mit dem Namen
-"Galaxy Conductor". Nutze MediaPipe Hand Landmarker (@mediapipe/tasks-vision via CDN)
-und Three.js (via CDN) für ein 3D-Partikelsystem.
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hand Particles</title>
+<style>
+  /* ------------------------------------------------------------------
+     Farb-Variablen: werden per JS bei jedem Palettenwechsel gesetzt.
+     @property macht sie animierbar → weicher Farbübergang im UI.
+     ------------------------------------------------------------------ */
+  @property --c1 { syntax: '<color>'; inherits: true; initial-value: #fff3b0; }
+  @property --c2 { syntax: '<color>'; inherits: true; initial-value: #ffc94a; }
+  @property --c3 { syntax: '<color>'; inherits: true; initial-value: #ff8a1f; }
 
-KONZEPT: Der Nutzer "dirigiert" mit den Händen eine Galaxie aus ca. 8000 Sternpartikeln.
+  :root {
+    --glow: rgba(255, 201, 74, 0.45);
+    --panel-bg: rgba(14, 16, 32, 0.48);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --text: #eef0ff;
+    --muted: #9aa0c3;
+    transition: --c1 .9s ease, --c2 .9s ease, --c3 .9s ease;
+  }
 
-HANDERKENNUNG:
-- Webcam, bis zu 2 Hände, VIDEO-Modus, kleine gespiegelte Kameravorschau oben rechts
-  mit eingezeichnetem Hand-Skelett.
-- Berechne geglättet: Handöffnung (0–1), Pinch-Abstand Daumen–Zeigefinger (0–1),
-  Handposition (x/y), Handrotation (Winkel Handgelenk → Mittelfinger) und
-  Geschwindigkeit der Zeigefingerspitze.
-- Erkenne zusätzlich die Peace-Geste (Zeige- und Mittelfinger gestreckt, Rest gebeugt).
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-VERHALTEN DER PARTIKEL:
-- Keine Hand: Sterne treiben langsam als Sternenstaub durch den Raum.
-- Offene Hand: Sterne ordnen sich zu einer Spiralgalaxie (2–4 Arme), die sich dreht.
-  Die Handrotation kippt die Galaxie in 3D.
-- Pinch: Abstand Daumen–Zeigefinger regelt die Rotationsgeschwindigkeit.
-- Faust: Alles wird spiralförmig in ein schwarzes Loch in der Mitte gesaugt
-  (Akkretionsscheibe glüht orange).
-- Faust → schnell öffnen: "Supernova" – Sterne explodieren nach außen, danach
-  bildet sich eine neue Galaxie mit zufälliger neuer Farbpalette und Armanzahl.
-- Die Galaxie folgt sanft der Handposition.
-- Weiche Übergänge (Lerp/Federkraft), additive Blending, Bloom-Effekt wenn möglich.
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #04050c;
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
 
-EXTRA 1 – STERNBILD MIT NAMEN:
-- Wenn BEIDE Hände gleichzeitig die Peace-Geste zeigen, fliegen die Sterne zusammen und
-  formen für 3 Sekunden den Namen "[Christina]" als Sternbild.
-- Zielpunkte per Offscreen-Canvas aus dem Text erzeugen; einige hellere "Hauptsterne"
-  werden mit dünnen, leicht leuchtenden Linien verbunden (wie ein echtes Sternbild).
-- Danach lösen sich die Sterne wieder in die Galaxie auf.
+  /* Vollbild-Partikel-Canvas */
+  #particles { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
-EXTRA 2 – SOUND (Web Audio API, alles synthetisch erzeugt, keine Audiodateien):
-- Leiser Ambient-Klangteppich im Hintergrund (sanfte Pads/Drone).
-- Schwarzes Loch: tiefes Brummen, das lauter und tiefer wird, je fester die Faust ist.
-- Supernova: Knall-/Explosionseffekt mit Hall.
-- Sternbild: kurzer, heller Glitzer-Klang.
-- Sternschnuppe: kurzes "Whoosh".
-- Audio startet erst nach erstem Klick (Browser-Autoplay-Regel), Taste M = stumm.
+  /* ---------------- Titel ---------------- */
+  .title {
+    position: fixed; top: 22px; left: 0; right: 0;
+    text-align: center; pointer-events: none; z-index: 2;
+  }
+  .title h1 {
+    font-size: clamp(2rem, 5.5vw, 4.2rem);
+    font-weight: 800; letter-spacing: .02em;
+    background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 22px var(--glow));
+  }
+  .title p { margin-top: 4px; color: var(--muted); font-size: .95rem; letter-spacing: .08em; }
 
-EXTRA 3 – STERNSCHNUPPEN:
-- Wenn die Zeigefingerspitze schnell wischt (Geschwindigkeit über Schwellwert),
-  fliegt in diese Richtung eine Sternschnuppe mit leuchtendem, verblassendem Schweif
-  über den Bildschirm.
-- Kurzer Cooldown (ca. 300 ms), damit nicht zu viele auf einmal entstehen.
+  /* ---------------- Info-Panel (Glassmorphism) ---------------- */
+  .panel {
+    position: fixed; left: 20px; bottom: 20px; z-index: 3;
+    width: 300px; padding: 18px 20px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    font-size: .9rem;
+  }
+  .clock { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .date  { color: var(--muted); margin: 6px 0 14px; }
+  .row   { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; }
+  .row .label { color: var(--muted); }
+  .row .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar { height: 6px; margin-top: 6px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .bar > i {
+    display: block; height: 100%; width: 100%;
+    transform-origin: left center; transform: scaleX(0);
+    background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
+    border-radius: inherit;
+  }
+  .swatch {
+    display: inline-block; width: 46px; height: 12px; border-radius: 99px; margin-right: 8px;
+    vertical-align: middle;
+    background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
+    box-shadow: 0 0 10px var(--glow);
+  }
+  .divider { height: 1px; background: var(--panel-border); margin: 14px 0 10px; }
+  .help { color: var(--muted); font-size: .76rem; line-height: 1.45; }
+  .keys { color: #6f75a0; font-size: .7rem; margin-top: 6px; }
 
-UI (minimalistisch, Sci-Fi-Stil, Monospace-Schrift):
-- HUD unten rechts: aktueller Modus (Drift / Galaxy / Black Hole / Supernova / Constellation),
-  Rotationsgeschwindigkeit, Anzahl erschaffener Galaxien, Anzahl Sternschnuppen, FPS,
-  Sound an/aus.
-- Startbildschirm mit kurzer Gesten-Anleitung und Button "Start" (startet Kamera + Audio),
-  Anleitung blendet nach 5 Sekunden aus.
+  /* ---------------- Webcam-Vorschau ---------------- */
+  .preview {
+    position: fixed; right: 20px; bottom: 20px; z-index: 3;
+    width: 260px; aspect-ratio: 4 / 3;
+    border-radius: 18px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 0 28px var(--glow), 0 10px 30px rgba(0,0,0,.5);
+    background: #000;
+  }
+  .preview video, .preview canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);          /* Spiegelung → wirkt wie ein Spiegel */
+  }
+  .badge {
+    position: absolute; left: 10px; top: 10px;
+    padding: 3px 9px; border-radius: 99px; font-size: .72rem;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(6px);
+  }
+  .badge.on { color: #8dffb0; }
+  .badge.off { color: #ff9a9a; }
+
+  /* ---------------- Toast beim Formwechsel ---------------- */
+  #toast {
+    position: fixed; left: 50%; top: 50%; z-index: 4;
+    transform: translate(-50%, -50%) scale(.9);
+    font-size: clamp(1.4rem, 4vw, 2.4rem); font-weight: 700;
+    opacity: 0; pointer-events: none;
+    transition: opacity .35s ease, transform .35s ease;
+    text-shadow: 0 0 24px var(--glow);
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  /* ---------------- Lade-/Fehler-Overlay ---------------- */
+  #overlay {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4,5,12,.6); backdrop-filter: blur(4px);
+    transition: opacity .5s ease;
+  }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+  .overlay-box {
+    max-width: 460px; margin: 16px; padding: 26px 28px; text-align: center;
+    background: var(--panel-bg); border: 1px solid var(--panel-border);
+    border-radius: 20px; backdrop-filter: blur(16px);
+  }
+  .overlay-box h2 { font-size: 1.3rem; margin-bottom: 10px; }
+  .overlay-box p  { color: var(--muted); line-height: 1.5; }
+  .overlay-box.error h2 { color: #ff8080; }
+  .overlay-box button {
+    margin-top: 18px; padding: 10px 22px; border: 0; border-radius: 99px; cursor: pointer;
+    font: inherit; font-weight: 600; color: #111;
+    background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
+  }
+  .spinner {
+    width: 38px; height: 38px; margin: 0 auto 14px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.15); border-top-color: var(--c2);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------------- Mobile ---------------- */
+  @media (max-width: 700px) {
+    .panel { left: 10px; right: 10px; bottom: 10px; width: auto; padding: 14px 16px; }
+    .clock { font-size: 1.6rem; }
+    .preview { width: 120px; right: 10px; bottom: auto; top: 110px; border-radius: 12px; }
+    .badge { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<header class="title">
+  <h1>Hand Particles</h1>
+  <p>Steuere das Universum mit deiner Hand</p>
+</header>
+
+<div id="toast"></div>
+
+<!-- Info-Panel -->
+<aside class="panel">
+  <div class="clock" id="clock">--:--:--</div>
+  <div class="date" id="date">–</div>
+
+  <div class="row"><span class="label">Hand</span><span class="value" id="handState">🚫 Keine Hand</span></div>
+
+  <div class="row"><span class="label">Openness</span><span class="value" id="openVal">0 %</span></div>
+  <div class="bar"><i id="openBar"></i></div>
+
+  <div class="row"><span class="label">Distanz zur Kamera</span><span class="value" id="distVal">–</span></div>
+  <div class="bar"><i id="distBar"></i></div>
+
+  <div class="row"><span class="label">Form</span><span class="value" id="shapeVal">–</span></div>
+  <div class="row"><span class="label">Farbe</span><span class="value"><span class="swatch"></span><span id="paletteVal">–</span></span></div>
+
+  <div class="divider"></div>
+  <div class="help">Faust → Öffnen wechselt Form &amp; Farbe | Näher = Partikel bündeln sich</div>
+  <div class="keys">[Leertaste] nächste Form · [L] Landmarks · [F] Hand folgen</div>
+</aside>
+
+<!-- Webcam-Vorschau -->
+<div class="preview">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="landmarks"></canvas>
+  <span class="badge off" id="badge">○ Keine Hand</span>
+</div>
+
+<!-- Lade-/Fehler-Overlay -->
+<div id="overlay">
+  <div class="overlay-box" id="overlayBox">
+    <div class="spinner"></div>
+    <h2>Starte Kamera &amp; Handerkennung…</h2>
+    <p>Bitte erlaube den Kamerazugriff, wenn der Browser fragt.</p>
+  </div>
+</div>
+
+<script type="module">
+/* ======================================================================
+   Hand Particles – MediaPipe Hand Landmarker steuert ein Partikelsystem
+   ====================================================================== */
+import {
+  FilesetResolver,
+  HandLandmarker,
+  DrawingUtils,
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const WASM_URL  = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+/* ---------------------------- Konfiguration ---------------------------- */
+const params = new URLSearchParams(location.search);
+const CONFIG = {
+  particleCount: innerWidth < 700 ? 2500 : 4500,
+  text: params.get("text") || "Christina",   // ?text=Hallo überschreibt den Text
+
+  // Openness: mittleres Verhältnis (Fingerspitze→Handgelenk) / (Handgelenk→Mittelfinger-Grundgelenk)
+  ratioClosed: 1.0,    // ≈ Faust
+  ratioOpen:   1.75,   // ≈ komplett gespreizte Hand
+  fistThreshold: 25,   // < 25 % → Fist
+  openThreshold: 70,   // > 70 % → Open
+
+  // Distanz: Handgröße relativ zur Bildhöhe
+  sizeFar:  0.18,      // Hand füllt ~18 % der Bildhöhe → "weit weg"
+  sizeNear: 0.70,      // Hand füllt ~70 % der Bildhöhe → "ganz nah"
+
+  smoothing: 0.18,     // Lerp-Faktor pro Frame (bei 60 fps)
+  handLostMs: 350,     // so lange darf die Hand "fehlen", bevor sie als verloren gilt
+  switchCooldownMs: 700,
+};
+
+/* ------------------------------ Hilfsfunktionen ------------------------------ */
+const $ = (id) => document.getElementById(id);
+const rand = Math.random;
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/** Normalverteilte Zufallszahl (Box-Muller) – für natürlich wirkende Streuung. */
+function gauss() {
+  let u = 0, v = 0;
+  while (!u) u = rand();
+  while (!v) v = rand();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+const hexToRgb = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const mixRgb = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+/* ------------------------------ Farbpaletten ------------------------------ */
+const PALETTES = [
+  { name: "Gold",  colors: ["#fff3b0", "#ffc94a", "#ff8a1f"] },
+  { name: "Cyan",  colors: ["#c8fbff", "#3ee6ff", "#2a7bff"] },
+  { name: "Pink",  colors: ["#ffe0f2", "#ff6ec7", "#ff2d7a"] },
+  { name: "Grün",  colors: ["#e4ffd0", "#6dff7a", "#00c9a7"] },
+  { name: "Lila",  colors: ["#f0dcff", "#b07cff", "#6a3cff"] },
+];
+
+/* ======================================================================
+   FORMEN – liefern normierte Zielpunkte (ca. -1…1) als Float32Array [x0,y0,x1,y1,…]
+   ====================================================================== */
+
+/** Herz über die klassische Parametergleichung; 55 % Umriss, 45 % Füllung. */
+function heartPoints(n) {
+  const out = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    const t = rand() * Math.PI * 2;
+    const x = 16 * Math.sin(t) ** 3;
+    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    const s = rand() < 0.55 ? 1 + gauss() * 0.015 : Math.sqrt(rand());
+    out[i * 2]     = (x / 16) * s;
+    out[i * 2 + 1] = ((y + 2.5) / 16) * s;
+  }
+  return out;
+}
+
+/** 5-zackiger Stern: Punkte auf den Kanten zwischen Außen-/Innenecken + Füllung. */
+function starPoints(n) {
+  const out = new Float32Array(n * 2);
+  const verts = [];
+  for (let k = 0; k < 10; k++) {
+    const r = k % 2 ? 0.42 : 1;
+    const a = -Math.PI / 2 + (k * Math.PI) / 5;
+    verts.push([Math.cos(a) * r, Math.sin(a) * r + 0.08]);
+  }
+  for (let i = 0; i < n; i++) {
+    const e = (rand() * 10) | 0;
+    const [ax, ay] = verts[e], [bx, by] = verts[(e + 1) % 10];
+    const f = rand();
+    const s = rand() < 0.6 ? 1 + gauss() * 0.012 : Math.sqrt(rand());
+    out[i * 2]     = lerp(ax, bx, f) * s;
+    out[i * 2 + 1] = (lerp(ay, by, f) - 0.08) * s + 0.08;
+  }
+  return out;
+}
+
+/** Zwei konzentrische Ringe. */
+function ringPoints(n) {
+  const out = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = rand() < 0.65 ? 1 + gauss() * 0.025 : 0.62 + gauss() * 0.02;
+    out[i * 2] = Math.cos(a) * r;
+    out[i * 2 + 1] = Math.sin(a) * r;
+  }
+  return out;
+}
+
+/** Galaxie-Spirale mit 3 Armen und hellem Kern. */
+function spiralPoints(n) {
+  const out = new Float32Array(n * 2);
+  const arms = 3;
+  for (let i = 0; i < n; i++) {
+    if (rand() < 0.1) {                       // Kern
+      out[i * 2] = gauss() * 0.1;
+      out[i * 2 + 1] = gauss() * 0.1;
+      continue;
+    }
+    const t = Math.pow(rand(), 0.8);          // 0 = Zentrum, 1 = Rand
+    const arm = (rand() * arms) | 0;
+    const a = (arm * 2 * Math.PI) / arms + t * Math.PI * 3.2;
+    const spread = 0.02 + 0.05 * t;
+    out[i * 2]     = Math.cos(a) * t + gauss() * spread;
+    out[i * 2 + 1] = Math.sin(a) * t + gauss() * spread;
+  }
+  return out;
+}
+
+/** Text: wird auf ein Offscreen-Canvas gezeichnet, deckende Pixel werden zu Zielpunkten. */
+function textPoints(n, text) {
+  const W = 1000, H = 300;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  let fs = 220;
+  const font = (s) => `900 ${s}px "Segoe UI", system-ui, sans-serif`;
+  g.font = font(fs);
+  const w = g.measureText(text).width;
+  if (w > W * 0.92) { fs *= (W * 0.92) / w; g.font = font(fs); }
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillStyle = "#fff";
+  g.fillText(text, W / 2, H / 2);
+
+  const data = g.getImageData(0, 0, W, H).data;
+  const pts = [];
+  for (let y = 0; y < H; y += 2)
+    for (let x = 0; x < W; x += 2)
+      if (data[(y * W + x) * 4 + 3] > 128) pts.push(x, y);
+  if (!pts.length) return ringPoints(n);     // Fallback bei leerem Text
+
+  const out = new Float32Array(n * 2);
+  const count = pts.length / 2;
+  for (let i = 0; i < n; i++) {
+    const k = ((rand() * count) | 0) * 2;
+    out[i * 2]     = (pts[k] + rand() * 2 - W / 2) / 150;
+    out[i * 2 + 1] = (pts[k + 1] + rand() * 2 - H / 2) / 150;
+  }
+  return out;
+}
+
+const SHAPES = [
+  { name: "Herz",    icon: "❤️", gen: heartPoints },
+  { name: "Stern",   icon: "⭐", gen: starPoints },
+  { name: "Ring",    icon: "⭕", gen: ringPoints },
+  { name: "Spirale", icon: "🌀", gen: spiralPoints },
+  { name: CONFIG.text, icon: "🔤", gen: (n) => textPoints(n, CONFIG.text) },
+];
+
+/* ======================================================================
+   PARTIKEL-ZUSTAND (Typed Arrays → schnell, kein GC-Druck)
+   ====================================================================== */
+const N = CONFIG.particleCount;
+const px = new Float32Array(N), py = new Float32Array(N);     // Position
+const vx = new Float32Array(N), vy = new Float32Array(N);     // Geschwindigkeit
+const hx = new Float32Array(N), hy = new Float32Array(N);     // "Zuhause" im freien Modus
+const ox = new Float32Array(N), oy = new Float32Array(N);     // feste Streurichtung je Partikel
+const size = new Float32Array(N), alpha = new Float32Array(N);
+const phase = new Float32Array(N), freq = new Float32Array(N), kMul = new Float32Array(N);
+const colIdx = new Uint8Array(N);                             // Index in die Sprite-Liste (Farbverlauf)
+
+const canvas = $("particles");
+const ctx = canvas.getContext("2d", { alpha: false });
+let W = innerWidth, H = innerHeight, DPR = 1;
+
+function initParticles() {
+  for (let i = 0; i < N; i++) {
+    px[i] = hx[i] = rand() * W;
+    py[i] = hy[i] = rand() * H;
+    ox[i] = gauss(); oy[i] = gauss();
+    size[i] = 0.8 + Math.pow(rand(), 3) * 3.2;   // viele kleine, wenige große
+    alpha[i] = 0.35 + rand() * 0.65;
+    phase[i] = rand() * Math.PI * 2;
+    freq[i] = 0.3 + rand() * 1.2;
+    kMul[i] = 0.6 + rand() * 0.8;                // leicht unterschiedliche Federhärte
+  }
+}
+
+function resize() {
+  const oldW = W, oldH = H;
+  W = innerWidth; H = innerHeight;
+  DPR = Math.min(devicePixelRatio || 1, 1.5);   // gedeckelt für stabile 60 fps
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // Bestehende Positionen proportional mitskalieren
+  const sx = W / oldW, sy = H / oldH;
+  for (let i = 0; i < N; i++) { px[i] *= sx; py[i] *= sy; hx[i] *= sx; hy[i] *= sy; }
+  computeFit();
+}
+
+/* ------------------------- Leucht-Sprites je Palette ------------------------- */
+const STEPS = 8; // Abstufungen im Farbverlauf c1 → c2 → c3
+
+function gradientColor(cols, t) {
+  return t < 0.5 ? mixRgb(cols[0], cols[1], t * 2) : mixRgb(cols[1], cols[2], (t - 0.5) * 2);
+}
+
+/** Erzeugt vorgerenderte Glow-Sprites (radialer Verlauf) – drawImage ist viel schneller als arc+Gradient pro Partikel. */
+function makeSprites(hexColors) {
+  const cols = hexColors.map(hexToRgb);
+  const sprites = [];
+  for (let s = 0; s < STEPS; s++) {
+    const c = gradientColor(cols, s / (STEPS - 1));
+    const core = mixRgb(c, [255, 255, 255], 0.65);
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 64;
+    const g = cv.getContext("2d");
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, rgba(core, 1));
+    gr.addColorStop(0.18, rgba(c, 0.85));
+    gr.addColorStop(0.45, rgba(c, 0.22));
+    gr.addColorStop(1, rgba(c, 0));
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 64, 64);
+    sprites.push(cv);
+  }
+  return sprites;
+}
+const SPRITES = PALETTES.map((p) => makeSprites(p.colors));
+
+/* ------------------------- Form- & Paletten-Wechsel ------------------------- */
+let shapeIdx = 0, paletteIdx = 0;
+let shapePts = null, shapeMaxX = 1, shapeMaxY = 1, fitScale = 200;
+
+function applyShape() {
+  shapePts = SHAPES[shapeIdx].gen(N);
+  // Ausdehnung bestimmen, damit jede Form (auch langer Text) auf den Bildschirm passt
+  let mx = 0, my = 0;
+  for (let i = 0; i < N; i++) {
+    mx = Math.max(mx, Math.abs(shapePts[i * 2]));
+    my = Math.max(my, Math.abs(shapePts[i * 2 + 1]));
+  }
+  shapeMaxX = mx || 1; shapeMaxY = my || 1;
+  // Farbverlauf diagonal über die Form legen (+ etwas Zufall)
+  for (let i = 0; i < N; i++) {
+    const t = clamp01(((shapePts[i * 2] / shapeMaxX) * 0.6 + (shapePts[i * 2 + 1] / shapeMaxY) * 0.4 + 1) / 2 + gauss() * 0.08);
+    colIdx[i] = Math.round(t * (STEPS - 1));
+  }
+  computeFit();
+}
+
+function computeFit() {
+  const R = Math.min(W, H) * 0.3;
+  fitScale = Math.min(R, (W * 0.42) / shapeMaxX, (H * 0.36) / shapeMaxY);
+}
+
+function applyPalette() {
+  const p = PALETTES[paletteIdx];
+  const root = document.documentElement.style;
+  root.setProperty("--c1", p.colors[0]);
+  root.setProperty("--c2", p.colors[1]);
+  root.setProperty("--c3", p.colors[2]);
+  root.setProperty("--glow", rgba(hexToRgb(p.colors[1]), 0.45));
+}
+
+function nextShapeAndPalette() {
+  shapeIdx = (shapeIdx + 1) % SHAPES.length;
+  paletteIdx = (paletteIdx + 1) % PALETTES.length;
+  applyShape();
+  applyPalette();
+  // kleiner "Burst", damit der Wechsel sichtbar explodiert
+  for (let i = 0; i < N; i++) { vx[i] += gauss() * 9; vy[i] += gauss() * 9; }
+  showToast(`${SHAPES[shapeIdx].icon} ${SHAPES[shapeIdx].name} · ${PALETTES[paletteIdx].name}`);
+}
+
+let toastTimer = 0;
+function showToast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1300);
+}
+
+/* ======================================================================
+   HANDERKENNUNG
+   ====================================================================== */
+const video = $("video");
+const lmCanvas = $("landmarks");
+const lmCtx = lmCanvas.getContext("2d");
+let landmarker = null, drawer = null;
+let showLandmarks = true, followHand = true;
+
+/** Gesamter Hand-Zustand: Rohwerte (raw) und geglättete Werte. */
+const hand = {
+  present: false, lastSeen: 0, presence: 0,
+  openRaw: 0, open: 0,          // Openness 0…100
+  distRaw: 0, dist: 0,          // Nähe 0 (weit) … 1 (nah)
+  xRaw: 0.5, yRaw: 0.5,         // Handmitte (normiert, bereits gespiegelt)
+  armed: false, lastSwitch: 0,  // für die Geste Faust → Öffnen
+};
+let cx = innerWidth / 2, cy = innerHeight / 2;  // geglättete Formmitte in Pixeln
+
+async function startCamera() {
+  if (!window.isSecureContext) {
+    const e = new Error("insecure"); e.name = "InsecureContext"; throw e;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const e = new Error("unsupported"); e.name = "NotSupportedError"; throw e;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+    audio: false,
+  });
+  video.srcObject = stream;
+  await new Promise((r) => (video.readyState >= 1 ? r() : (video.onloadedmetadata = r)));
+  await video.play();
+  lmCanvas.width = video.videoWidth;
+  lmCanvas.height = video.videoHeight;
+}
+
+async function initModel() {
+  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  const opts = (delegate) => ({
+    baseOptions: { modelAssetPath: MODEL_URL, delegate },
+    runningMode: "VIDEO",
+    numHands: 1,
+    minHandDetectionConfidence: 0.6,
+    minHandPresenceConfidence: 0.6,
+    minTrackingConfidence: 0.5,
+  });
+  try {
+    landmarker = await HandLandmarker.createFromOptions(vision, opts("GPU"));
+  } catch {
+    landmarker = await HandLandmarker.createFromOptions(vision, opts("CPU")); // Fallback
+  }
+  drawer = new DrawingUtils(lmCtx);
+}
+
+/**
+ * Wertet die 21 Landmarks aus:
+ *  - Openness  = Ø(Abstand Fingerspitze→Handgelenk) / (Abstand Handgelenk→Landmark 9)
+ *  - Distanz   = Größe der Hand im Bild (Bounding Box, abgesichert über die Handfläche)
+ *  - Position  = Mittelpunkt der Handfläche
+ */
+function analyzeHand(lm) {
+  const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
+  // In Pixel umrechnen, damit x und y gleich skaliert sind (Seitenverhältnis!)
+  const X = (i) => lm[i].x * vw, Y = (i) => lm[i].y * vh;
+  const d = (a, b) => Math.hypot(X(a) - X(b), Y(a) - Y(b));
+
+  // --- Openness ---
+  const palm = d(0, 9) || 1;                     // Handgröße als Referenz
+  let sum = 0;
+  for (const tip of [4, 8, 12, 16, 20]) sum += d(tip, 0) / palm;
+  const ratio = sum / 5;
+  hand.openRaw = clamp01((ratio - CONFIG.ratioClosed) / (CONFIG.ratioOpen - CONFIG.ratioClosed)) * 100;
+
+  // --- Distanz (Bounding Box) ---
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i < 21; i++) {
+    const x = X(i), y = Y(i);
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  const bbox = Math.max(maxX - minX, maxY - minY) / vh;
+  // Eine Faust hat eine kleinere Box → würde "weiter weg" wirken.
+  // Darum zusätzlich die Handfläche (Länge 0→9 + Breite 5→17) als stabile Untergrenze.
+  const palmSize = ((palm + d(5, 17)) / vh) * 1.15;
+  const handSize = Math.max(bbox, palmSize);
+  hand.distRaw = clamp01((handSize - CONFIG.sizeFar) / (CONFIG.sizeNear - CONFIG.sizeFar));
+
+  // --- Position (Handfläche), gespiegelt wie die Vorschau ---
+  let sx = 0, sy = 0;
+  for (const i of [0, 5, 9, 13, 17]) { sx += lm[i].x; sy += lm[i].y; }
+  hand.xRaw = 1 - sx / 5;
+  hand.yRaw = sy / 5;
+}
+
+let lastVideoTime = -1;
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  const res = landmarker.detectForVideo(video, now);
+
+  lmCtx.clearRect(0, 0, lmCanvas.width, lmCanvas.height);
+  if (res.landmarks && res.landmarks.length) {
+    const lm = res.landmarks[0];
+    analyzeHand(lm);
+    hand.lastSeen = now;
+    hand.present = true;
+    if (showLandmarks) {
+      const pal = PALETTES[paletteIdx].colors;
+      drawer.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, { color: pal[1], lineWidth: 3 });
+      drawer.drawLandmarks(lm, { color: "#ffffff", fillColor: pal[2], radius: 3, lineWidth: 1 });
+    }
+  }
+}
+
+/** Glättung, Hand-Verlust, Gestenlogik – einmal pro Frame. */
+function updateHand(now, dt) {
+  if (hand.present && now - hand.lastSeen > CONFIG.handLostMs) {
+    hand.present = false;
+    hand.armed = false;
+    hand.openRaw = 0;
+    hand.distRaw = 0;
+  }
+  // Frame-unabhängiges Lerp: gleiche Glättung bei 30, 60 oder 144 fps
+  const a = 1 - Math.pow(1 - CONFIG.smoothing, dt);
+  hand.open = lerp(hand.open, hand.openRaw, a);
+  hand.dist = lerp(hand.dist, hand.distRaw, a);
+  hand.presence = lerp(hand.presence, hand.present ? 1 : 0, a * 0.5);
+
+  // Zielmitte der Form: folgt der Hand (leicht verstärkt, damit man nicht bis zum Bildrand muss)
+  let tx = W / 2, ty = H * 0.52;
+  if (followHand && hand.present) {
+    tx = W / 2 + (hand.xRaw - 0.5) * W * 1.4;
+    ty = H / 2 + (hand.yRaw - 0.5) * H * 1.4;
+    const mX = Math.min(fitScale * shapeMaxX * 0.6, W / 2), mY = Math.min(fitScale * shapeMaxY * 0.6, H / 2);
+    tx = Math.max(mX, Math.min(W - mX, tx));
+    ty = Math.max(mY, Math.min(H - mY, ty));
+  }
+  const ap = 1 - Math.pow(1 - 0.12, dt);
+  cx = lerp(cx, tx, ap);
+  cy = lerp(cy, ty, ap);
+
+  // Geste: erst Faust (scharf schalten), dann offene Hand → Wechsel
+  if (hand.present) {
+    if (hand.open < CONFIG.fistThreshold) hand.armed = true;
+    if (hand.armed && hand.open > CONFIG.openThreshold && now - hand.lastSwitch > CONFIG.switchCooldownMs) {
+      hand.armed = false;
+      hand.lastSwitch = now;
+      nextShapeAndPalette();
+    }
+  }
+}
+
+/* ======================================================================
+   PHYSIK & RENDERING
+   ====================================================================== */
+function updateAndDrawParticles(time, dt) {
+  // Hintergrund mit leichter Transparenz → kurze Leuchtspuren
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(4, 5, 12, 0.35)";
+  ctx.fillRect(0, 0, W, H);
+
+  const handMode = hand.present;
+  const d = hand.dist;                                 // 0 = weit, 1 = nah
+  const scale = fitScale * lerp(1.2, 0.85, d);         // weit weg → Form größer
+  const scatter = lerp(85, 3, d) * (fitScale / 300);   // nah → eng gebündelt
+  const brightness = handMode ? lerp(1, 0.6, d) : 1;   // gebündelt nicht überstrahlen
+
+  // Federparameter (frame-unabhängig)
+  const k = handMode ? 0.035 : 0.004;
+  const damp = Math.pow(handMode ? 0.86 : 0.95, dt);
+  const jitter = 0.12;
+
+  // Weicher Lichthof hinter der Form
+  if (hand.presence > 0.02) {
+    const c = hexToRgb(PALETTES[paletteIdx].colors[1]);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, fitScale * 1.6);
+    g.addColorStop(0, rgba(c, 0.035 * hand.presence));
+    g.addColorStop(1, rgba(c, 0));
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  ctx.globalCompositeOperation = "lighter";            // additives Blending
+  const sprites = SPRITES[paletteIdx];
+  const pts = shapePts;
+
+  for (let i = 0; i < N; i++) {
+    let tx, ty;
+    if (handMode) {
+      // Zielpunkt der Form + individuelle Streuung (abhängig von der Distanz)
+      tx = cx + pts[i * 2] * scale + ox[i] * scatter;
+      ty = cy + pts[i * 2 + 1] * scale + oy[i] * scatter;
+    } else {
+      // Freies Schweben um den eigenen "Heimatpunkt"
+      tx = hx[i] + Math.sin(time * freq[i] + phase[i]) * 30;
+      ty = hy[i] + Math.cos(time * freq[i] * 0.8 + phase[i]) * 30;
+    }
+    const kk = k * kMul[i] * dt;
+    vx[i] = vx[i] * damp + (tx - px[i]) * kk + (rand() - 0.5) * jitter;
+    vy[i] = vy[i] * damp + (ty - py[i]) * kk + (rand() - 0.5) * jitter;
+    px[i] += vx[i] * dt;
+    py[i] += vy[i] * dt;
+
+    // Funkeln
+    const tw = 0.7 + 0.3 * Math.sin(time * 3 * freq[i] + phase[i]);
+    ctx.globalAlpha = alpha[i] * tw * brightness;
+    const r = size[i] * 2.6;
+    ctx.drawImage(sprites[colIdx[i]], px[i] - r, py[i] - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ======================================================================
+   UI-UPDATE (gedrosselt auf ~10 Hz – DOM-Zugriffe sind teuer)
+   ====================================================================== */
+const ui = {
+  clock: $("clock"), date: $("date"), handState: $("handState"),
+  openVal: $("openVal"), openBar: $("openBar"),
+  distVal: $("distVal"), distBar: $("distBar"),
+  shapeVal: $("shapeVal"), paletteVal: $("paletteVal"), badge: $("badge"),
+};
+let lastUi = 0;
+
+function updateUI(now) {
+  if (now - lastUi < 100) return;
+  lastUi = now;
+
+  const date = new Date();
+  ui.clock.textContent = date.toLocaleTimeString("de-DE");
+  ui.date.textContent = date.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+
+  let state = "🚫 Keine Hand";
+  if (hand.present) {
+    if (hand.open < CONFIG.fistThreshold) state = "✊ Fist";
+    else if (hand.open > CONFIG.openThreshold) state = "🖐️ Open";
+    else state = "✋ Half Open";
+  }
+  ui.handState.textContent = state;
+
+  ui.openVal.textContent = `${Math.round(hand.open)} %`;
+  ui.openBar.style.transform = `scaleX(${hand.open / 100})`;
+
+  const dl = !hand.present ? "–" : hand.dist < 0.33 ? "Far" : hand.dist < 0.66 ? "Medium" : "Near";
+  ui.distVal.textContent = hand.present ? `${dl} · ${hand.dist.toFixed(2)}` : "–";
+  ui.distBar.style.transform = `scaleX(${hand.dist})`;
+
+  ui.shapeVal.textContent = `${SHAPES[shapeIdx].icon} ${SHAPES[shapeIdx].name}`;
+  ui.paletteVal.textContent = PALETTES[paletteIdx].name;
+
+  ui.badge.textContent = hand.present ? "● Hand erkannt" : "○ Keine Hand";
+  ui.badge.className = "badge " + (hand.present ? "on" : "off");
+}
+
+/* ======================================================================
+   HAUPTSCHLEIFE
+   ====================================================================== */
+let lastFrame = performance.now();
+function frame(now) {
+  const dt = Math.min((now - lastFrame) / 16.667, 3);   // 1.0 = ein Frame bei 60 fps
+  lastFrame = now;
+
+  detect(now);
+  updateHand(now, dt);
+  updateAndDrawParticles(now / 1000, dt);
+  updateUI(now);
+
+  requestAnimationFrame(frame);
+}
+
+/* ======================================================================
+   FEHLERANZEIGE & START
+   ====================================================================== */
+function showError(title, msg) {
+  const box = $("overlayBox");
+  box.className = "overlay-box error";
+  box.innerHTML = `<h2>⚠️ ${title}</h2><p>${msg}</p><button id="retry">Erneut versuchen</button>`;
+  $("overlay").classList.remove("hidden");
+  $("retry").onclick = () => location.reload();
+}
+
+function cameraErrorMessage(err) {
+  switch (err.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return ["Kamerazugriff verweigert",
+        "Bitte erlaube den Zugriff auf die Kamera (Symbol links in der Adressleiste) und lade die Seite neu."];
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return ["Keine Kamera gefunden", "Schließe eine Webcam an und versuche es erneut."];
+    case "NotReadableError":
+      return ["Kamera belegt", "Die Kamera wird gerade von einer anderen App verwendet (Zoom, Teams …). Schließe sie und versuche es erneut."];
+    case "InsecureContext":
+      return ["Unsicherer Kontext", "Die Kamera funktioniert nur über HTTPS oder http://localhost. Starte z. B. mit <code>npx serve</code>."];
+    default:
+      return ["Kamera-Fehler", `${err.name}: ${err.message}`];
+  }
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space") { e.preventDefault(); nextShapeAndPalette(); }
+  if (e.key === "l" || e.key === "L") { showLandmarks = !showLandmarks; lmCtx.clearRect(0, 0, lmCanvas.width, lmCanvas.height); }
+  if (e.key === "f" || e.key === "F") { followHand = !followHand; showToast(followHand ? "Folgen: an" : "Folgen: aus"); }
+});
+window.addEventListener("resize", resize);
+
+// Partikel laufen sofort (freier Modus), Kamera + Modell laden parallel
+initParticles();
+resize();
+applyShape();
+applyPalette();
+requestAnimationFrame(frame);
+
+(async () => {
+  const [cam, model] = await Promise.allSettled([startCamera(), initModel()]);
+  if (cam.status === "rejected") {
+    console.error(cam.reason);
+    const [t, m] = cameraErrorMessage(cam.reason);
+    return showError(t, m);
+  }
+  if (model.status === "rejected") {
+    console.error(model.reason);
+    return showError("Modell konnte nicht geladen werden",
+      "Der MediaPipe Hand Landmarker wird aus dem Internet geladen. Prüfe deine Verbindung und lade neu.");
+  }
+  $("overlay").classList.add("hidden");
+})();
+</script>
+</body>
+</html>
