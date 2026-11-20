@@ -1,264 +1,375 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Glasses DE – Prototyp</title>
-  <style>
-    :root {
-      --bg: #f6f8fb;
-      --surface: #ffffff;
-      --ink: #132033;
-      --muted: #4b5d73;
-      --accent: #0f52ba;
-      --accent-dark: #09377d;
-      --border: #d9e2ec;
-      --badge-bg: #e6effc;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      line-height: 1.6;
-    }
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1.5rem;
-    }
-    .container {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
-    .nav-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    .brand {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--ink);
-      text-decoration: none;
-    }
-    .badge {
-      display: inline-block;
-      background: var(--badge-bg);
-      color: var(--accent-dark);
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 0.25rem 0.7rem;
-      border-radius: 999px;
-      margin-bottom: 0.75rem;
-    }
-    .hero {
-      padding: 3rem 0 2rem;
-    }
-    h1 {
-      font-size: clamp(2rem, 4vw, 2.8rem);
-      line-height: 1.15;
-      margin: 0 0 1rem;
-    }
-    .lead {
-      font-size: 1.1rem;
-      color: var(--muted);
-      max-width: 65ch;
-      margin: 0 0 1.5rem;
-    }
-    .actions {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .btn {
-      display: inline-block;
-      padding: 0.7rem 1.2rem;
-      border-radius: 8px;
-      font-weight: 600;
-      text-decoration: none;
-      border: 1px solid var(--accent);
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: #ffffff;
-    }
-    .btn-primary:hover {
-      background: var(--accent-dark);
-    }
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--accent-dark);
-    }
-    section {
-      padding: 1.5rem 0;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
-    }
-    .mode-buttons {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
-    .mode-btn {
-      padding: 0.55rem 1rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--ink);
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .mode-btn[aria-pressed="true"] {
-      background: var(--accent);
-      color: #ffffff;
-      border-color: var(--accent);
-    }
-    label {
-      display: block;
-      font-weight: 600;
-      margin-top: 0.85rem;
-      margin-bottom: 0.3rem;
-    }
-    input, select, textarea {
-      width: 100%;
-      padding: 0.6rem 0.75rem;
-      border: 1px solid #b8c4d4;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.95rem;
-      background: #ffffff;
-    }
-    .status-msg {
-      margin-top: 0.9rem;
-      font-weight: 600;
-      color: var(--accent-dark);
-      min-height: 1.4em;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prof. Pin Luarn | 2026 AI Personal Site</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <!-- chatbot temporarily disabled; uncomment to enable and confirm the filename is chatbot.js -->
+    <!-- <script src="chatbot.js"></script> -->
 </head>
 <body>
-  <header>
-    <div class="container nav-bar">
-      <a class="brand" href="#top">Smart Glasses DE</a>
-      <a class="btn btn-secondary" href="#pilot">Demo &amp; Pilot anfragen</a>
-    </div>
-  </header>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#home">2026 AI</a>
 
-  <main id="top" class="container">
-    <section class="hero">
-      <span class="badge">Intelligente Brille für den deutschen Markt</span>
-      <h1>Klar sehen. Frei handeln. Datenschutz mitdenken.</h1>
-      <p class="lead">
-        Leichte Smart Glasses mit optionaler Sehstärke, klaren Aufnahmehinweisen und praxisnahen KI-Funktionen –
-        für den Arbeitsalltag und unterwegs.
-      </p>
-      <div class="actions">
-        <a class="btn btn-primary" href="#pilot">Demo &amp; Pilot anfragen</a>
-        <a class="btn btn-secondary" href="#scenarios">Funktionen entdecken</a>
-      </div>
-    </section>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-    <section id="scenarios">
-      <div class="card">
-        <h2>Anwendungsbereiche</h2>
-        <div class="mode-buttons" role="group" aria-label="Zielgruppen-Ansicht">
-          <button type="button" class="mode-btn" id="btn-everyday" aria-pressed="true">Alltag &amp; Optik</button>
-          <button type="button" class="mode-btn" id="btn-enterprise" aria-pressed="false">Unternehmen &amp; Außendienst</button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#projects">Projects</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://drluarn.github.io/student.html" target="_blank" rel="noopener">Student Portfolio</a>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <div id="mode-panel" aria-live="polite">
-          <h3 id="mode-title">Alltagsbrille zuerst, smarte Technik genau dann, wenn du sie brauchst.</h3>
-          <ul id="mode-list">
-            <li>Angenehmes Tragegefühl über den ganzen Tag und Kompatibilität mit Korrektionsgläsern.</li>
-            <li>Diskrete Sprach- und Übersetzungsunterstützung auf Reisen und im Alltag.</li>
-            <li>Klare Statusanzeigen für volle Nachvollziehbarkeit.</li>
-          </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6 hero-content fade-in">
+                    <h1 id="name"></h1>
+                    <div class="titles-container">
+                        <p class="subtitle title-line" id="title1"></p>
+                        <p class="subtitle title-line" id="title2"></p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Expertise:</strong>
+                        <span id="expertise"></span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Education:</strong>
+                        <span id="education"></span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Email:</strong>
+                        <a href="" class="text-white" id="email"></a>
+                    </div>
+                    <div class="mb-3">
+                        <strong>LinkedIn:</strong>
+                        <a href="" target="_blank" class="text-white" id="linkedin">
+                            <i class="fab fa-linkedin me-1"></i>
+                            <span id="linkedin-text"></span>
+                            <i class="fas fa-external-link-alt ms-1"></i>
+                        </a>
+                    </div>
+                    <div class="mb-4 student-links">
+                        <strong>2026 Pforzheim Student Project Links:</strong>
+                        <div class="student-link-item">
+                            <a href="https://drluarn.github.io/student.html" target="_blank" rel="noopener">
+                                <span>• Student Personal Website Portfolio</span>
+                                <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center fade-in">
+                    <img src="mypic.jpg" alt="profile photo" class="profile-img">
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="card">
-        <h2>Transparenz von Anfang an</h2>
-        <p>
-          Vertrauen entsteht durch Nachvollziehbarkeit. Sichtbare Statusanzeigen zeigen klar an, wann Funktionen
-          aktiv sind, während Nutzerinnen und Nutzer volle Kontrolle über Aufnahmen, Freigaben und Datenoptionen behalten.
-        </p>
-      </div>
     </section>
 
-    <section id="pilot">
-      <div class="card">
-        <h2>Pilotprojekt oder Beratung anfordern</h2>
-        <form id="pilot-form">
-          <label for="org-input">Name / Organisation</label>
-          <input id="org-input" name="organization" type="text" required placeholder="z. B. Muster Optik / Logistik GmbH" />
-
-          <label for="segment-select">Zielbereich</label>
-          <select id="segment-select" name="segment">
-            <option value="everyday">Alltag &amp; Optik</option>
-            <option value="enterprise">Unternehmen &amp; Außendienst</option>
-          </select>
-
-          <label for="notes-input">Anwendungsfall / Nachricht</label>
-          <textarea id="notes-input" name="notes" rows="3" placeholder="Beschreiben Sie kurz Ihren Anwendungsfall..."></textarea>
-
-          <div class="actions" style="margin-top: 1rem;">
-            <button type="submit" class="btn btn-primary">Anfrage absenden</button>
-          </div>
-          <div id="form-status" class="status-msg" role="status" aria-live="polite"></div>
-        </form>
-      </div>
+    <!-- About Section -->
+    <section id="about" class="section">
+        <div class="container">
+            <h2 class="section-title">About Me</h2>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card fade-in">
+                        <div class="card-body p-4">
+                            <p class="lead text-center" id="about-text">
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
-  </main>
 
-  <script>
-    const btnEveryday = document.getElementById("btn-everyday");
-    const btnEnterprise = document.getElementById("btn-enterprise");
-    const modeTitle = document.getElementById("mode-title");
-    const modeList = document.getElementById("mode-list");
-    const form = document.getElementById("pilot-form");
-    const statusEl = document.getElementById("form-status");
+    <!-- Projects Section -->
+    <section id="projects" class="section bg-light">
+        <div class="container">
+            <h2 class="section-title">My Projects</h2>
 
-    function setMode(mode) {
-      const isEveryday = mode === "everyday";
-      btnEveryday.setAttribute("aria-pressed", String(isEveryday));
-      btnEnterprise.setAttribute("aria-pressed", String(!isEveryday));
+            <!-- Projects are rendered dynamically by JS -->
+            <div class="project-grid fade-in" id="projects-grid"></div>
+        </div>
+    </section>
 
-      if (isEveryday) {
-        modeTitle.textContent = "Alltagsbrille zuerst, smarte Technik genau dann, wenn du sie brauchst.";
-        modeList.innerHTML = `
-          <li>Angenehmes Tragegefühl über den ganzen Tag und Kompatibilität mit Korrektionsgläsern.</li>
-          <li>Diskrete Sprach- und Übersetzungsunterstützung auf Reisen und im Alltag.</li>
-          <li>Klare Statusanzeigen für volle Nachvollziehbarkeit.</li>
-        `;
-      } else {
-        modeTitle.textContent = "Freihändige Unterstützung für Service, Logistik und Technik.";
-        modeList.innerHTML = `
-          <li>Schritt-für-Schritt-Hinweise, Live-Übersetzung und schnelle Dokumentation.</li>
-          <li>Klare Richtlinien und Nachvollziehbarkeit für Teams und Betriebsräte.</li>
-          <li>Fokus auf praxisnahe Einsatzszenarien ohne unnötige Ablenkung.</li>
-        `;
-      }
-    }
+    <!-- Student Portfolio Section -->
+    <section id="portfolio" class="section bg-light">
+        <div class="container">
+            <h2 class="section-title">Student Portfolio</h2>
+            <div class="row justify-content-center">
+                <div class="col-lg-7">
+                    <div class="portfolio-cta fade-in">
+                        <i class="fas fa-graduation-cap"></i>
+                        <h4 style="color: var(--navy-deep); font-weight: 700;">2026 Pforzheim Student Personal Website Portfolio</h4>
+                        <p class="text-muted mt-2">Click the button below to browse this semester's student project websites</p>
+                        <a href="https://drluarn.github.io/student.html" class="btn-elegant" target="_blank" rel="noopener">
+                            <i class="fas fa-arrow-right"></i> <span>View Student Portfolio</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    btnEveryday.addEventListener("click", () => setMode("everyday"));
-    btnEnterprise.addEventListener("click", () => setMode("enterprise"));
+    <!-- Contact Section -->
+    <section id="contact" class="section">
+        <div class="container">
+            <h2 class="section-title">Contact</h2>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="contact-info fade-in">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <div>
+                                <h5>Email</h5>
+                                <a id="contact-email1" href=""></a>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <div>
+                                <h5>Phone</h5>
+                                <p id="contact-phone"></p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div>
+                                <h5>Location</h5>
+                                <p id="contact-location"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      statusEl.textContent = "Vielen Dank für deine Anfrage. Unser Team meldet sich mit passenden Informationen zum Einsatz in Deutschland.";
-    });
-  </script>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Dr. Pin Luarn. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const totalUnits = 6;
+
+        // Fallback project descriptions (used if projects.txt cannot be fetched, e.g. opened via file://)
+        const defaultProjects = [
+            {id: 1, description: 'Introduction to AI, setting up github.io'},
+            {id: 2, description: 'MediaPipe Solutions'},
+            {id: 3, description: 'Teachable Machine, YOLO, Neural Style Transfer, Simple Chat App, Island Builder'},
+            {id: 4, description: 'Ollama, Gemini'},
+            {id: 5, description: 'N8N, OpenAI Agent, Claude Agent, OpenClaw, Hermes Agent'},
+            {id: 6, description: 'Meta Muse, Manus CUE!, Hark Pro, OpenAI Dots, Grok Bot, Claude Duet'}
+        ];
+
+        let projects = defaultProjects;
+
+        // Always read projects.txt from the instructor's own site so every student
+        // fork (even hosted on a different github.io domain) shows the same, current
+        // unit list rather than whatever projects.txt happens to ship in their repo.
+        const PROJECTS_TXT_URL = 'https://drluarn.github.io/projects.txt';
+
+        async function loadProjectsTxt() {
+            try {
+                const res = await fetch(PROJECTS_TXT_URL, { cache: 'no-store' });
+                if (!res.ok) throw new Error('projects.txt not found');
+                const text = await res.text();
+                const parsed = parseProfileTxt(text);
+                const loaded = [];
+                for (let i = 1; i <= totalUnits; i++) {
+                    const description = parsed[`unit${i}`];
+                    if (description) loaded.push({id: i, description});
+                }
+                // Only use the loaded list if every unit was found; otherwise keep defaults
+                projects = (loaded.length === totalUnits) ? loaded : defaultProjects;
+            } catch (err) {
+                console.warn('Could not load projects.txt, using built-in defaults.', err);
+                projects = defaultProjects;
+            }
+        }
+
+        // Fallback profile (used if profile.txt cannot be fetched, e.g. opened via file://)
+        const defaultProfile = {
+            name: 'Prof. Pin Luarn',
+            title1: 'Top 2% Scientist Worldwide (2020-2026)',
+            title2: '2024 National Teaching Award Laureate',
+            expertise: 'Internet Marketing, AI Applications, Agentic AI',
+            education: 'Ph.D. in Industrial Engineering, University of Wisconsin-Madison, USA',
+            email: 'luarn@mail.ntust.edu.tw',
+            linkedin: 'https://pse.is/8nn88y',
+            about1: 'Prof. Luarn earned his B.S. in Industrial Engineering from Tunghai University,',
+            about2: 'and his M.S. and Ph.D. in Industrial Engineering from the University of Wisconsin-Madison.',
+            about3: "Named among the world's top 2% scientists by Stanford University & Elsevier for seven consecutive years (2020-2026).",
+            about4: 'Recipient of the 2024 Presidential National Teaching Award, Taiwan',
+            phone: '+886-2-2737-6754',
+            location: 'T2-409, National Taiwan University of Science and Technology, No. 43, Sec. 4, Keelung Rd., Taipei, Taiwan'
+        };
+
+        let profileData = defaultProfile;
+
+        // Parse a simple "key=value" text file, ignoring blank lines and comments
+        function parseProfileTxt(text) {
+            const data = {};
+            text.split(/\r?\n/).forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) return;
+                const idx = trimmed.indexOf('=');
+                if (idx === -1) return;
+                const key = trimmed.slice(0, idx).trim();
+                const value = trimmed.slice(idx + 1).trim();
+                data[key] = value;
+            });
+            return data;
+        }
+
+        async function loadProfileTxt() {
+            try {
+                const res = await fetch('profile.txt', { cache: 'no-store' });
+                if (!res.ok) throw new Error('profile.txt not found');
+                const text = await res.text();
+                const parsed = parseProfileTxt(text);
+                // Merge over defaults so missing keys still fall back gracefully
+                profileData = Object.assign({}, defaultProfile, parsed);
+            } catch (err) {
+                console.warn('Could not load profile.txt, using built-in defaults.', err);
+                profileData = defaultProfile;
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            await Promise.all([loadProfileTxt(), loadProjectsTxt()]);
+            applyProfileData();
+            renderProjects();
+            initScrollAnimations();
+            initSmoothScrolling();
+        });
+
+        // Fill in profile fields (name, titles, about text, contact info)
+        function applyProfileData() {
+            const p = profileData;
+            document.getElementById('name').textContent = p.name;
+            document.getElementById('title1').textContent = p.title1;
+            document.getElementById('title2').textContent = p.title2;
+            document.getElementById('expertise').textContent = p.expertise;
+            document.getElementById('education').textContent = p.education;
+
+            document.getElementById('email').textContent = p.email;
+            document.getElementById('email').href = `mailto:${p.email}`;
+            document.getElementById('linkedin').href = p.linkedin;
+            document.getElementById('linkedin-text').textContent = p.linkedin;
+
+            const aboutParts = [p.about1, p.about2, p.about3, p.about4]
+                .filter(text => text && text.trim());
+            document.getElementById('about-text').innerHTML = aboutParts.join(' ');
+
+            document.getElementById('contact-email1').textContent = p.email;
+            document.getElementById('contact-email1').href = `mailto:${p.email}`;
+            document.getElementById('contact-phone').textContent = p.phone;
+            document.getElementById('contact-location').textContent = p.location;
+        }
+
+        // Render the project grid
+        function renderProjects() {
+            const grid = document.getElementById('projects-grid');
+
+            grid.innerHTML = projects.map(project => {
+                return `
+                    <div class="project-card" onclick="openProject(${project.id})">
+                        <div class="project-number">${project.id}</div>
+                        <h5>Unit #${project.id}</h5>
+                        <p class="text-muted">${project.description}</p>
+                        <small class="text-primary">Click for details</small>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Open project details
+        function openProject(id) {
+            window.open(`unit.html?unit=${id}`, '_blank');
+        }
+
+        // Scroll-triggered fade-in animations
+        function initScrollAnimations() {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.fade-in').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // Smooth scrolling for in-page navigation links
+        function initSmoothScrolling() {
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        const headerOffset = 70;
+                        const elementPosition = target.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        }
+
+        // Navbar background on scroll
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.style.background = 'rgba(255,255,255,0.98)';
+            } else {
+                navbar.style.background = 'rgba(255,255,255,0.95)';
+            }
+        });
+    </script>
 </body>
 </html>
