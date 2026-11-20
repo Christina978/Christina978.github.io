@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Glasses DE – Prototyp</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --surface: #ffffff;
+      --ink: #132033;
+      --muted: #4b5d73;
+      --accent: #0f52ba;
+      --accent-dark: #09377d;
+      --border: #d9e2ec;
+      --badge-bg: #e6effc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--badge-bg);
+      color: var(--accent-dark);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+    .hero {
+      padding: 3rem 0 2rem;
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      line-height: 1.15;
+      margin: 0 0 1rem;
+    }
+    .lead {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 65ch;
+      margin: 0 0 1.5rem;
+    }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--accent);
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--accent-dark);
+    }
+    section {
+      padding: 1.5rem 0;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .mode-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .mode-btn {
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--ink);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mode-btn[aria-pressed="true"] {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-top: 0.85rem;
+      margin-bottom: 0.3rem;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #b8c4d4;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      background: #ffffff;
+    }
+    .status-msg {
+      margin-top: 0.9rem;
+      font-weight: 600;
+      color: var(--accent-dark);
+      min-height: 1.4em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav-bar">
+      <a class="brand" href="#top">Smart Glasses DE</a>
+      <a class="btn btn-secondary" href="#pilot">Demo &amp; Pilot anfragen</a>
+    </div>
+  </header>
+
+  <main id="top" class="container">
+    <section class="hero">
+      <span class="badge">Intelligente Brille für den deutschen Markt</span>
+      <h1>Klar sehen. Frei handeln. Datenschutz mitdenken.</h1>
+      <p class="lead">
+        Leichte Smart Glasses mit optionaler Sehstärke, klaren Aufnahmehinweisen und praxisnahen KI-Funktionen –
+        für den Arbeitsalltag und unterwegs.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#pilot">Demo &amp; Pilot anfragen</a>
+        <a class="btn btn-secondary" href="#scenarios">Funktionen entdecken</a>
+      </div>
+    </section>
+
+    <section id="scenarios">
+      <div class="card">
+        <h2>Anwendungsbereiche</h2>
+        <div class="mode-buttons" role="group" aria-label="Zielgruppen-Ansicht">
+          <button type="button" class="mode-btn" id="btn-everyday" aria-pressed="true">Alltag &amp; Optik</button>
+          <button type="button" class="mode-btn" id="btn-enterprise" aria-pressed="false">Unternehmen &amp; Außendienst</button>
+        </div>
+        <div id="mode-panel" aria-live="polite">
+          <h3 id="mode-title">Alltagsbrille zuerst, smarte Technik genau dann, wenn du sie brauchst.</h3>
+          <ul id="mode-list">
+            <li>Angenehmes Tragegefühl über den ganzen Tag und Kompatibilität mit Korrektionsgläsern.</li>
+            <li>Diskrete Sprach- und Übersetzungsunterstützung auf Reisen und im Alltag.</li>
+            <li>Klare Statusanzeigen für volle Nachvollziehbarkeit.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Transparenz von Anfang an</h2>
+        <p>
+          Vertrauen entsteht durch Nachvollziehbarkeit. Sichtbare Statusanzeigen zeigen klar an, wann Funktionen
+          aktiv sind, während Nutzerinnen und Nutzer volle Kontrolle über Aufnahmen, Freigaben und Datenoptionen behalten.
+        </p>
+      </div>
+    </section>
+
+    <section id="pilot">
+      <div class="card">
+        <h2>Pilotprojekt oder Beratung anfordern</h2>
+        <form id="pilot-form">
+          <label for="org-input">Name / Organisation</label>
+          <input id="org-input" name="organization" type="text" required placeholder="z. B. Muster Optik / Logistik GmbH" />
+
+          <label for="segment-select">Zielbereich</label>
+          <select id="segment-select" name="segment">
+            <option value="everyday">Alltag &amp; Optik</option>
+            <option value="enterprise">Unternehmen &amp; Außendienst</option>
+          </select>
+
+          <label for="notes-input">Anwendungsfall / Nachricht</label>
+          <textarea id="notes-input" name="notes" rows="3" placeholder="Beschreiben Sie kurz Ihren Anwendungsfall..."></textarea>
+
+          <div class="actions" style="margin-top: 1rem;">
+            <button type="submit" class="btn btn-primary">Anfrage absenden</button>
+          </div>
+          <div id="form-status" class="status-msg" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const btnEveryday = document.getElementById("btn-everyday");
+    const btnEnterprise = document.getElementById("btn-enterprise");
+    const modeTitle = document.getElementById("mode-title");
+    const modeList = document.getElementById("mode-list");
+    const form = document.getElementById("pilot-form");
+    const statusEl = document.getElementById("form-status");
+
+    function setMode(mode) {
+      const isEveryday = mode === "everyday";
+      btnEveryday.setAttribute("aria-pressed", String(isEveryday));
+      btnEnterprise.setAttribute("aria-pressed", String(!isEveryday));
+
+      if (isEveryday) {
+        modeTitle.textContent = "Alltagsbrille zuerst, smarte Technik genau dann, wenn du sie brauchst.";
+        modeList.innerHTML = `
+          <li>Angenehmes Tragegefühl über den ganzen Tag und Kompatibilität mit Korrektionsgläsern.</li>
+          <li>Diskrete Sprach- und Übersetzungsunterstützung auf Reisen und im Alltag.</li>
+          <li>Klare Statusanzeigen für volle Nachvollziehbarkeit.</li>
+        `;
+      } else {
+        modeTitle.textContent = "Freihändige Unterstützung für Service, Logistik und Technik.";
+        modeList.innerHTML = `
+          <li>Schritt-für-Schritt-Hinweise, Live-Übersetzung und schnelle Dokumentation.</li>
+          <li>Klare Richtlinien und Nachvollziehbarkeit für Teams und Betriebsräte.</li>
+          <li>Fokus auf praxisnahe Einsatzszenarien ohne unnötige Ablenkung.</li>
+        `;
+      }
+    }
+
+    btnEveryday.addEventListener("click", () => setMode("everyday"));
+    btnEnterprise.addEventListener("click", () => setMode("enterprise"));
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      statusEl.textContent = "Vielen Dank für deine Anfrage. Unser Team meldet sich mit passenden Informationen zum Einsatz in Deutschland.";
+    });
+  </script>
+</body>
+</html>
