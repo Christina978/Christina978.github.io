@@ -1,4 +1,5 @@
 In Google Gemini, skills package repeatable instructions and quality guardrails so you don't have to re-explain your workflow every time you start a new task. 
+ 
 Skill: synthesize-research-sources 
 This is is designed for multi-source research synthesis and source auditing—such as comparing studies, market or industry reports, articles, or reading notes on a shared topic.
 When triggered, it guides Gemini through five consistent steps:
