@@ -84,7 +84,10 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
         <input type="range" id="tol" min="0.06" max="0.25" step="0.01" value="0.13">
         <span id="tolV" class="hint" style="margin:0">0.13</span>
       </div>
-      <p class="hint">Calibration happens automatically: look at your screen for the first 2 seconds after your face is detected.</p>
+      <div class="row" style="margin-top:8px">
+        <label style="display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer"><input type="checkbox" id="kbd" checked style="width:22px;height:22px;min-height:0;accent-color:var(--rose)"> Allow looking down at keyboard / notes</label>
+      </div>
+      <p class="hint">Short glances (under 2 s) are ignored. Calibration happens automatically: look at your screen for the first 2 seconds after your face is detected.</p>
     </div>
 
     <div class="card">
@@ -146,7 +149,8 @@ const video = $("video"), overlay = $("overlay"), ctx = overlay.getContext("2d")
 let landmarker = null, running = false, lastVT = -1, draw = null;
 
 // calibration + live state
-let base = null, calib = [], closedSince = 0, drowsyFlag = false;
+let base = null, calib = [], closedSince = 0, drowsyFlag = false, lookSince = 0, awaySince = 0;
+const GRACE = 2000;
 let frameWindow = [];           // {t, v} frame focus values for 10 s live score
 let secondBuf = [];             // frame values in current second
 // session
@@ -201,7 +205,13 @@ $("calBtn").onclick = () => { base = null; calib = []; };
 const blend = (cats, name) => (cats.find(c => c.categoryName === name) || {score:0}).score;
 
 function analyse(res){
-  if (!res.faceLandmarks || !res.faceLandmarks.length) return { state:"away", v:0 };
+  const now = performance.now();
+  if (!res.faceLandmarks || !res.faceLandmarks.length){
+    if (!base) return { state:"calibrating", v:null };
+    if (!awaySince) awaySince = now;
+    return now - awaySince > GRACE ? { state:"away", v:0 } : { state:"focused", v:1 };
+  }
+  awaySince = 0;
   const lm = res.faceLandmarks[0];
   const w = lm[454].x - lm[234].x, h = lm[152].y - lm[168].y;
   if (Math.abs(w) < 1e-3 || Math.abs(h) < 1e-3) return { state:"away", v:0 };
@@ -210,7 +220,6 @@ function analyse(res){
   const cats = res.faceBlendshapes && res.faceBlendshapes[0] ? res.faceBlendshapes[0].categories : [];
   const eyes = (blend(cats,"eyeBlinkLeft") + blend(cats,"eyeBlinkRight")) / 2;
   const closed = eyes > 0.5;
-  const now = performance.now();
 
   if (!base){
     if (!closed) calib.push({yaw, pitch});
@@ -225,9 +234,14 @@ function analyse(res){
   const longClose = closedSince && now - closedSince > 1200;
   if (longClose && !drowsyFlag){ drowsyFlag = true; if (sess) sess.drowsy++; }
 
-  const looking = Math.abs(yaw - base.yaw) < tol() && Math.abs(pitch - base.pitch) < tol();
+  const pitchTol = $("kbd").checked ? tol() * 3 : tol();   // extra room to nod down to keyboard / notes
+  const pitchOk = Math.abs(pitch - base.pitch) < pitchTol;
+  const looking = Math.abs(yaw - base.yaw) < tol() && pitchOk;
   if (longClose) return { state:"drowsy", v:0, lm };
-  if (!looking) return { state:"looking away", v:0.2, lm };
+  if (!looking){
+    if (!lookSince) lookSince = now;
+    if (now - lookSince > GRACE) return { state:"looking away", v:0.2, lm };
+  } else lookSince = 0;
   return { state:"focused", v:1, lm };
 }
 
