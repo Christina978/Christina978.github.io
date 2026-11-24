@@ -71,7 +71,7 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
       <div class="stage mirror" id="stage">
         <video id="video" playsinline muted></video>
         <canvas id="overlay"></canvas>
-        <div class="empty" id="empty">Click <b>&nbsp;Start webcam&nbsp;</b> or load a video file.<br>The model loads on first start (~5 MB).</div>
+        <div class="empty" id="empty"><div>Click <b>Start webcam</b> or load a video file.<br>The model loads on first start (~5 MB).</div></div>
         <div class="badge" id="badge" hidden>–</div>
       </div>
       <div class="row">
@@ -91,16 +91,16 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
       <div class="gauge">
         <svg viewBox="0 0 200 200" aria-hidden="true">
           <circle cx="100" cy="100" r="84" fill="none" stroke="#3a2a43" stroke-width="14"/>
-          <circle id="arc" cx="100" cy="100" r="84" fill="none" stroke="#ff8fa3" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 528" transform="rotate(-90 100 100)" style="transition:stroke-dasharray .4s"/>
+          <circle id="arc" cx="100" cy="100" r="84" fill="none" stroke="#ff8fa3" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 528" opacity="0" transform="rotate(-90 100 100)" style="transition:stroke-dasharray .4s"/>
         </svg>
         <div class="big"><b id="live">–</b><span>focus, last 10 s</span></div>
       </div>
-      <div class="timer" id="timer">25:00</div>
+      <div class="timer" id="timer">01:00</div>
       <div class="row" style="justify-content:center;margin-top:6px">
         <select id="dur" aria-label="Session length">
-          <option value="60">1 min (demo)</option>
+          <option value="60" selected>1 min (demo)</option>
           <option value="300">5 min</option>
-          <option value="1500" selected>25 min (Pomodoro)</option>
+          <option value="1500">25 min (Pomodoro)</option>
           <option value="3000">50 min</option>
         </select>
         <button class="primary" id="sessBtn" disabled>Start session</button>
@@ -122,7 +122,7 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
 
   <section class="card">
     <h2>Session feedback</h2>
-    <div id="feedback">Finish a session (or press <b>End session</b>) to get your summary and coaching tips.</div>
+    <div id="feedback">How it works: 1) Start webcam  2) Click "Start session"  3) When the timer ends (or you click "End session"), your summary and coaching tips appear here.</div>
     <div class="row">
       <button id="aiBtn" disabled>Ask Gemini for coaching</button>
       <button id="copyBtn" disabled>Copy report</button>
@@ -256,7 +256,7 @@ function loop(){
     if (frameWindow.length){
       const live = frameWindow.reduce((s,f)=>s+f.v,0) / frameWindow.length;
       $("live").textContent = Math.round(live*100) + "%";
-      $("arc").setAttribute("stroke-dasharray", (live*528).toFixed(1) + " 528");
+      $("arc").setAttribute("stroke-dasharray", (live*528).toFixed(1) + " 528"); $("arc").setAttribute("opacity", live > 0.01 ? "1" : "0");
     }
   }
   const now = performance.now();
