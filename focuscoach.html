@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Focus Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm study companion, precise like a lab instrument
+   IDEA: a desk lamp's focus meter beside the webcam view
+   PICTURE: live camera with face mesh + large focus ring
+   COLOUR/TYPE: plum-black ground, rose accent, dusk support; Inter Tight + Inter
+   LAYOUT: camera left, live gauge right, timeline + summary below */
+:root{--bg:#1a0f1f;--panel:#24172b;--line:#3a2a43;--ink:#f6eef8;--muted:#b9a8c4;--rose:#ff8fa3;--dusk:#8f7aa8;--ok:#7be0b0;--warn:#ffc46b;--bad:#ff6b6b}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,.big{font-family:"Inter Tight",Inter,sans-serif}
+header{padding:28px max(5vw,16px) 8px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+h1{margin:0;font-weight:300;font-size:clamp(32px,5vw,48px);line-height:1.05}
+h1 b{font-weight:700}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+main{padding:16px max(5vw,16px) 48px;max-width:1240px;margin:0 auto;display:grid;gap:20px}
+.top{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+@media(max-width:860px){.top{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px}
+.stage{position:relative;aspect-ratio:4/3;background:#0f0913;border-radius:14px;overflow:hidden}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.stage.mirror video,.stage.mirror canvas{transform:scaleX(-1)}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);padding:20px}
+.badge{position:absolute;left:12px;top:12px;padding:6px 12px;border-radius:99px;font-weight:600;font-size:14px;background:#000a;backdrop-filter:blur(4px)}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center}
+button,select,input,.file{font:inherit;font-size:16px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:#2e1f36;color:var(--ink);padding:8px 16px;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,.file:focus-within{outline:2px solid var(--rose);outline-offset:2px}
+button.primary{background:var(--rose);color:#2a0f18;border-color:var(--rose);font-weight:600}
+button:disabled{opacity:.45;cursor:not-allowed}
+.file input{display:none}
+.gauge{display:grid;place-items:center;position:relative}
+.gauge svg{width:min(260px,70vw);height:auto}
+.gauge .big{position:absolute;text-align:center}
+.gauge .big b{display:block;font-size:clamp(44px,7vw,64px);font-weight:700;line-height:1}
+.gauge .big span{color:var(--muted);font-size:14px}
+.timer{font-family:"Inter Tight";font-size:36px;font-weight:500;text-align:center;margin:8px 0 2px;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.stat{background:#1d1223;border-radius:12px;padding:10px 12px}
+.stat small{color:var(--muted);display:block;font-size:13px}
+.stat b{font-size:20px;white-space:nowrap}
+.fig{position:relative;height:160px}
+.fig canvas{position:absolute;inset:0;width:100%;height:100%}
+h2{margin:0 0 10px;font-size:22px;font-weight:500}
+label{color:var(--muted);font-size:14px}
+input[type=range]{min-height:auto;padding:0;accent-color:var(--rose)}
+#feedback{white-space:pre-wrap;background:#1d1223;border-radius:12px;padding:14px;margin-top:12px;min-height:60px}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;align-items:center}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><b>Focus</b> Coach</h1>
+    <p class="sub">Your webcam measures how focused you study, using MediaPipe Face Landmarker. Everything runs in your browser and no video leaves your computer.</p>
+  </div>
+</header>
+<main>
+  <section class="top">
+    <div class="card">
+      <div class="stage mirror" id="stage">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="empty" id="empty">Click <b>&nbsp;Start webcam&nbsp;</b> or load a video file.<br>The model loads on first start (~5 MB).</div>
+        <div class="badge" id="badge" hidden>–</div>
+      </div>
+      <div class="row">
+        <button class="primary" id="camBtn">Start webcam</button>
+        <label class="file">Use video file<input type="file" id="fileIn" accept="video/*"></label>
+        <button id="calBtn" disabled>Recalibrate</button>
+      </div>
+      <div class="row">
+        <label for="tol">Head tolerance</label>
+        <input type="range" id="tol" min="0.06" max="0.25" step="0.01" value="0.13">
+        <span id="tolV" class="hint" style="margin:0">0.13</span>
+      </div>
+      <p class="hint">Calibration happens automatically: look at your screen for the first 2 seconds after your face is detected.</p>
+    </div>
+
+    <div class="card">
+      <div class="gauge">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="84" fill="none" stroke="#3a2a43" stroke-width="14"/>
+          <circle id="arc" cx="100" cy="100" r="84" fill="none" stroke="#ff8fa3" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 528" transform="rotate(-90 100 100)" style="transition:stroke-dasharray .4s"/>
+        </svg>
+        <div class="big"><b id="live">–</b><span>focus, last 10 s</span></div>
+      </div>
+      <div class="timer" id="timer">25:00</div>
+      <div class="row" style="justify-content:center;margin-top:6px">
+        <select id="dur" aria-label="Session length">
+          <option value="60">1 min (demo)</option>
+          <option value="300">5 min</option>
+          <option value="1500" selected>25 min (Pomodoro)</option>
+          <option value="3000">50 min</option>
+        </select>
+        <button class="primary" id="sessBtn" disabled>Start session</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><small>Session focus</small><b id="sAvg">–</b></div>
+        <div class="stat"><small>Away from desk</small><b id="sAway">0 s</b></div>
+        <div class="stat"><small>Looking away</small><b id="sLook">0 s</b></div>
+        <div class="stat"><small>Drowsy moments</small><b id="sDrowsy">0</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Focus timeline</h2>
+    <div class="fig"><canvas id="chart"></canvas></div>
+    <div class="legend"><span><i style="background:var(--ok)"></i>focused</span><span><i style="background:var(--warn)"></i>partly</span><span><i style="background:var(--bad)"></i>distracted / away</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Session feedback</h2>
+    <div id="feedback">Finish a session (or press <b>End session</b>) to get your summary and coaching tips.</div>
+    <div class="row">
+      <button id="aiBtn" disabled>Ask Gemini for coaching</button>
+      <button id="copyBtn" disabled>Copy report</button>
+    </div>
+    <details>
+      <summary>Gemini settings (optional)</summary>
+      <div class="row">
+        <input id="key" type="password" placeholder="Gemini API key" autocomplete="off" style="flex:1 1 260px">
+        <input id="model" value="gemini-2.5-flash" aria-label="Gemini model" style="flex:0 1 200px">
+      </div>
+      <p class="hint">Only the summary numbers are sent to Gemini, never images. Your key is stored only in this browser. Without a key, the app gives built-in feedback.</p>
+    </details>
+  </section>
+</main>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+{
+const $ = id => document.getElementById(id);
+const video = $("video"), overlay = $("overlay"), ctx = overlay.getContext("2d"), stage = $("stage");
+let landmarker = null, running = false, lastVT = -1, draw = null;
+
+// calibration + live state
+let base = null, calib = [], closedSince = 0, drowsyFlag = false;
+let frameWindow = [];           // {t, v} frame focus values for 10 s live score
+let secondBuf = [];             // frame values in current second
+// session
+let sess = null;
+
+const tol = () => parseFloat($("tol").value);
+$("tol").oninput = () => $("tolV").textContent = $("tol").value;
+try { $("key").value = localStorage.getItem("fc_key") || ""; } catch(e){}
+$("key").onchange = () => { try { localStorage.setItem("fc_key", $("key").value); } catch(e){} };
+
+async function loadModel(){
+  if (landmarker) return;
+  $("empty").innerHTML = "Loading MediaPipe model…";
+  const fs = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  const opts = { baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task" },
+    runningMode:"VIDEO", numFaces:1, outputFaceBlendshapes:true };
+  try { landmarker = await FaceLandmarker.createFromOptions(fs, {...opts, baseOptions:{...opts.baseOptions, delegate:"GPU"}}); }
+  catch(e){ landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
+  draw = new DrawingUtils(ctx);
+}
+
+function stopStream(){
+  const s = video.srcObject; if (s) s.getTracks().forEach(t => t.stop());
+  video.srcObject = null; video.removeAttribute("src");
+}
+
+async function startSource(useCam, file){
+  try {
+    await loadModel();
+    stopStream();
+    if (useCam){
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
+      stage.classList.add("mirror");
+    } else {
+      video.src = URL.createObjectURL(file); video.loop = true;
+      stage.classList.remove("mirror");
+    }
+    await video.play();
+    $("empty").hidden = true; $("badge").hidden = false;
+    $("sessBtn").disabled = false; $("calBtn").disabled = false;
+    base = null; calib = [];
+    if (!running){ running = true; requestAnimationFrame(loop); }
+  } catch(e){
+    $("empty").hidden = false;
+    $("empty").textContent = "Could not start: " + e.message + ". Allow camera access, or try a video file.";
+  }
+}
+$("camBtn").onclick = () => startSource(true);
+$("fileIn").onchange = e => { const f = e.target.files[0]; if (f) startSource(false, f); };
+$("calBtn").onclick = () => { base = null; calib = []; };
+
+const blend = (cats, name) => (cats.find(c => c.categoryName === name) || {score:0}).score;
+
+function analyse(res){
+  if (!res.faceLandmarks || !res.faceLandmarks.length) return { state:"away", v:0 };
+  const lm = res.faceLandmarks[0];
+  const w = lm[454].x - lm[234].x, h = lm[152].y - lm[168].y;
+  if (Math.abs(w) < 1e-3 || Math.abs(h) < 1e-3) return { state:"away", v:0 };
+  const yaw = (lm[1].x - lm[234].x) / w;
+  const pitch = (lm[1].y - lm[168].y) / h;
+  const cats = res.faceBlendshapes && res.faceBlendshapes[0] ? res.faceBlendshapes[0].categories : [];
+  const eyes = (blend(cats,"eyeBlinkLeft") + blend(cats,"eyeBlinkRight")) / 2;
+  const closed = eyes > 0.5;
+  const now = performance.now();
+
+  if (!base){
+    if (!closed) calib.push({yaw, pitch});
+    if (calib.length >= 45){
+      base = { yaw: calib.reduce((a,c)=>a+c.yaw,0)/calib.length, pitch: calib.reduce((a,c)=>a+c.pitch,0)/calib.length };
+    }
+    return { state:"calibrating", v:null, lm };
+  }
+  // eyes
+  if (closed){ if (!closedSince) closedSince = now; }
+  else { closedSince = 0; drowsyFlag = false; }
+  const longClose = closedSince && now - closedSince > 1200;
+  if (longClose && !drowsyFlag){ drowsyFlag = true; if (sess) sess.drowsy++; }
+
+  const looking = Math.abs(yaw - base.yaw) < tol() && Math.abs(pitch - base.pitch) < tol();
+  if (longClose) return { state:"drowsy", v:0, lm };
+  if (!looking) return { state:"looking away", v:0.2, lm };
+  return { state:"focused", v:1, lm };
+}
+
+const colors = { focused:"#7be0b0", "looking away":"#ffc46b", drowsy:"#ff6b6b", away:"#ff6b6b", calibrating:"#8f7aa8" };
+let lastSec = 0;
+function loop(){
+  if (!running) return;
+  if (video.readyState >= 2 && video.currentTime !== lastVT){
+    lastVT = video.currentTime;
+    if (overlay.width !== video.videoWidth){ overlay.width = video.videoWidth; overlay.height = video.videoHeight; }
+    const res = landmarker.detectForVideo(video, performance.now());
+    const a = analyse(res);
+    ctx.clearRect(0,0,overlay.width,overlay.height);
+    if (a.lm){
+      draw.drawConnectors(a.lm, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color:"#ff8fa355", lineWidth:0.6 });
+      draw.drawConnectors(a.lm, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color:colors[a.state], lineWidth:2 });
+    }
+    const b = $("badge"); b.textContent = a.state === "calibrating" ? "Calibrating – look at the screen" : a.state;
+    b.style.color = colors[a.state];
+    const t = performance.now();
+    if (a.v !== null){
+      frameWindow.push({t, v:a.v}); secondBuf.push(a.v);
+      if (sess){ if (a.state === "away") sess.awayF++; if (a.state === "looking away") sess.lookF++; sess.frames++; }
+    }
+    frameWindow = frameWindow.filter(f => t - f.t < 10000);
+    if (frameWindow.length){
+      const live = frameWindow.reduce((s,f)=>s+f.v,0) / frameWindow.length;
+      $("live").textContent = Math.round(live*100) + "%";
+      $("arc").setAttribute("stroke-dasharray", (live*528).toFixed(1) + " 528");
+    }
+  }
+  const now = performance.now();
+  if (now - lastSec >= 1000){ lastSec = now; tick(); }
+  requestAnimationFrame(loop);
+}
+
+// ---------- session ----------
+const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+$("dur").onchange = () => { if (!sess) $("timer").textContent = fmt(+$("dur").value); };
+
+$("sessBtn").onclick = () => {
+  if (sess) return endSession();
+  sess = { dur:+$("dur").value, left:+$("dur").value, secs:[], frames:0, awayF:0, lookF:0, drowsy:0, start:new Date() };
+  $("sessBtn").textContent = "End session";
+  $("feedback").textContent = "Session running… stay focused!";
+  $("aiBtn").disabled = true; $("copyBtn").disabled = true;
+  drawChart();
+};
+
+function tick(){
+  const v = secondBuf.length ? secondBuf.reduce((a,b)=>a+b,0)/secondBuf.length : null;
+  secondBuf = [];
+  if (!sess) return;
+  if (v !== null) sess.secs.push(v);
+  sess.left--;
+  $("timer").textContent = fmt(Math.max(0, sess.left));
+  updateStats(); drawChart();
+  if (sess.left <= 0) endSession();
+}
+
+function summary(s){
+  const n = s.secs.length || 1, fps = s.frames / Math.max(1, s.dur - s.left);
+  const avg = s.secs.reduce((a,b)=>a+b,0) / n;
+  const third = Math.max(1, Math.floor(n/3));
+  const part = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length*100) : 0;
+  return {
+    minutes: +((s.dur - Math.max(0,s.left))/60).toFixed(1),
+    focusPct: Math.round(avg*100),
+    awaySec: Math.round(s.awayF / Math.max(fps,1)),
+    lookSec: Math.round(s.lookF / Math.max(fps,1)),
+    drowsy: s.drowsy,
+    start: part(s.secs.slice(0,third)), middle: part(s.secs.slice(third, 2*third)), end: part(s.secs.slice(2*third))
+  };
+}
+function updateStats(){
+  const m = summary(sess);
+  $("sAvg").textContent = sess.secs.length ? m.focusPct + "%" : "–";
+  $("sAway").textContent = m.awaySec + " s"; $("sLook").textContent = m.lookSec + " s"; $("sDrowsy").textContent = m.drowsy;
+}
+
+let lastSummary = null;
+function endSession(){
+  if (!sess) return;
+  lastSummary = summary(sess); lastSummary.date = sess.start.toLocaleString();
+  updateStats();
+  const m = lastSummary, tips = [];
+  if (m.focusPct >= 80) tips.push("Excellent focus! Keep this rhythm and take a 5-minute break now.");
+  else if (m.focusPct >= 60) tips.push("Solid session, but there is room to improve.");
+  else tips.push("Your focus was low this time. Try a shorter session (e.g. 15 min) and remove distractions.");
+  if (m.lookSec > m.minutes*60*0.15) tips.push("You looked away often: put your phone out of sight and close extra tabs.");
+  if (m.awaySec > 60) tips.push("You left your desk for over a minute: plan breaks instead of taking them mid-session.");
+  if (m.drowsy > 0) tips.push(`${m.drowsy} drowsy moment(s) detected: drink water, open a window or stand up briefly.`);
+  if (m.end < m.start - 15) tips.push(`Focus dropped from ${m.start}% at the start to ${m.end}% at the end: shorter sessions may suit you better.`);
+  $("feedback").textContent = reportText(m) + "\n\nTips:\n• " + tips.join("\n• ");
+  sess = null;
+  $("sessBtn").textContent = "Start session"; $("timer").textContent = fmt(+$("dur").value);
+  $("aiBtn").disabled = false; $("copyBtn").disabled = false;
+}
+const reportText = m => `Session ${m.date}: ${m.minutes} min · focus ${m.focusPct}% (start ${m.start}% → middle ${m.middle}% → end ${m.end}%) · away ${m.awaySec} s · looking away ${m.lookSec} s · drowsy ${m.drowsy}×`;
+
+$("copyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText($("feedback").textContent); $("copyBtn").textContent = "Copied ✓"; }
+  catch(e){ $("copyBtn").textContent = "Copy failed"; }
+  setTimeout(() => $("copyBtn").textContent = "Copy report", 1500);
+};
+
+$("aiBtn").onclick = async () => {
+  const key = $("key").value.trim();
+  if (!key){ document.querySelector("details").open = true; $("key").focus(); return; }
+  const prompt = `You are a friendly study coach for a university student. Here are the numbers from a webcam focus session: ${JSON.stringify(lastSummary)} (focusPct = % of time looking at the screen with open eyes; start/middle/end = focus % per third; awaySec = seconds no face visible; lookSec = seconds looking away; drowsy = long eye closures). Give 3 short, specific, encouraging sentences of coaching. No markdown.`;
+  $("aiBtn").disabled = true; $("aiBtn").textContent = "Asking Gemini…";
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent($("model").value.trim())}:generateContent?key=${encodeURIComponent(key)}`,
+      { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ contents:[{ parts:[{ text:prompt }] }] }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error ? j.error.message : r.status);
+    const text = j.candidates[0].content.parts.map(p => p.text).join("");
+    $("feedback").textContent += "\n\nGemini coach:\n" + text.trim();
+  } catch(e){ $("feedback").textContent += "\n\nGemini error: " + e.message; }
+  $("aiBtn").disabled = false; $("aiBtn").textContent = "Ask Gemini for coaching";
+};
+
+// ---------- chart ----------
+const chart = $("chart"), cctx = chart.getContext("2d");
+let lastChart = null;
+function drawChart(){
+  const W = chart.clientWidth, H = chart.clientHeight, dpr = devicePixelRatio || 1;
+  chart.width = W*dpr; chart.height = H*dpr; cctx.setTransform(dpr,0,0,dpr,0,0);
+  cctx.clearRect(0,0,W,H);
+  cctx.fillStyle = "#b9a8c4"; cctx.font = "13px Inter, sans-serif";
+  const data = sess ? sess.secs : (lastChart || []);
+  const total = sess ? sess.dur : Math.max(data.length, 1);
+  if (!data.length){ cctx.fillText("Start a session to see your focus over time.", 8, H/2); return; }
+  const bw = W / total, pad = 18;
+  data.forEach((v,i) => {
+    cctx.fillStyle = v > 0.75 ? "#7be0b0" : v > 0.35 ? "#ffc46b" : "#ff6b6b";
+    const h = Math.max(2, v*(H-pad));
+    cctx.fillRect(i*bw, H-pad-h, Math.max(1, bw-(bw>3?1:0)), h);
+  });
+  cctx.fillStyle = "#b9a8c4";
+  cctx.fillText("0:00", 0, H-3);
+  const endLbl = fmt(total); cctx.fillText(endLbl, W - cctx.measureText(endLbl).width, H-3);
+  if (sess) lastChart = sess.secs;
+}
+const ro = new ResizeObserver(drawChart); ro.observe(chart);
+}
+</script>
+</body>
