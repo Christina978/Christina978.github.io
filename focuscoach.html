@@ -45,6 +45,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .stat{background:#1d1223;border-radius:12px;padding:10px 12px}
 .stat small{color:var(--muted);display:block;font-size:13px}
 .stat b{font-size:20px;white-space:nowrap}
+.stat.wide{grid-column:1/-1}
 .fig{position:relative;height:160px}
 .fig canvas{position:absolute;inset:0;width:100%;height:100%}
 h2{margin:0 0 10px;font-size:22px;font-weight:500}
@@ -71,7 +72,7 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
       <div class="stage mirror" id="stage">
         <video id="video" playsinline muted></video>
         <canvas id="overlay"></canvas>
-        <div class="empty" id="empty"><div>Click <b>Start webcam</b> or load a video file.<br>The model loads on first start (~5 MB).</div></div>
+        <div class="empty" id="empty"><div>Click <b>Start webcam</b> or load a video file.<br>The AI models load on first start (~10 MB).</div></div>
         <div class="badge" id="badge" hidden>–</div>
       </div>
       <div class="row">
@@ -86,6 +87,9 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
       </div>
       <div class="row" style="margin-top:8px">
         <label style="display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer"><input type="checkbox" id="kbd" checked style="width:22px;height:22px;min-height:0;accent-color:var(--rose)"> Allow looking down at keyboard / notes</label>
+      </div>
+      <div class="row" style="margin-top:0">
+        <label style="display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer"><input type="checkbox" id="phoneOn" checked style="width:22px;height:22px;min-height:0;accent-color:var(--rose)"> Detect phone (MediaPipe Object Detector)</label>
       </div>
       <p class="hint">Short glances (under 2 s) are ignored. Calibration happens automatically: look at your screen for the first 2 seconds after your face is detected.</p>
     </div>
@@ -113,6 +117,7 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
         <div class="stat"><small>Away from desk</small><b id="sAway">0 s</b></div>
         <div class="stat"><small>Looking away</small><b id="sLook">0 s</b></div>
         <div class="stat"><small>Drowsy moments</small><b id="sDrowsy">0</b></div>
+        <div class="stat wide"><small>Phone in hand</small><b id="sPhone">0× · 0 s</b></div>
       </div>
     </div>
   </section>
@@ -134,19 +139,24 @@ details summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;a
       <summary>Gemini settings (optional)</summary>
       <div class="row">
         <input id="key" type="password" placeholder="Gemini API key" autocomplete="off" style="flex:1 1 260px">
-        <input id="model" value="gemini-2.5-flash" aria-label="Gemini model" style="flex:0 1 200px">
+        <input id="model" value="gemini-3.8-flash" aria-label="Gemini model" style="flex:0 1 200px">
       </div>
-      <p class="hint">Only the summary numbers are sent to Gemini, never images. Your key is stored only in this browser. Without a key, the app gives built-in feedback.</p>
+      <p class="hint">Not needed if this page has a coaching server set up – just click "Ask Gemini for coaching". Only the summary numbers are sent to Gemini, never images. A key entered here is stored only in this browser.</p>
     </details>
   </section>
 </main>
 
 <script type="module">
-import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+import { FaceLandmarker, ObjectDetector, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 {
+// Paste your Google Apps Script web app URL here (ends with /exec).
+// Then everyone can get Gemini coaching without their own API key.
+const PROXY_URL = "https://script.google.com/macros/s/AKfycbxcZpWInTErrF3erhRNwI7HANTf4q2wI6-SCmJORmKNublOaVP9WJsKzVShO0tDRIwWrg/exec";
+const hasProxy = PROXY_URL.startsWith("https://");
 const $ = id => document.getElementById(id);
 const video = $("video"), overlay = $("overlay"), ctx = overlay.getContext("2d"), stage = $("stage");
-let landmarker = null, running = false, lastVT = -1, draw = null;
+let landmarker = null, detector = null, running = false, lastVT = -1, draw = null;
+let phoneBox = null, phoneSeenAt = 0, phoneSince = 0, phoneFlag = false, lastDet = 0;
 
 // calibration + live state
 let base = null, calib = [], closedSince = 0, drowsyFlag = false, lookSince = 0, awaySince = 0;
@@ -170,6 +180,24 @@ async function loadModel(){
   try { landmarker = await FaceLandmarker.createFromOptions(fs, {...opts, baseOptions:{...opts.baseOptions, delegate:"GPU"}}); }
   catch(e){ landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
   draw = new DrawingUtils(ctx);
+  try {
+    $("empty").innerHTML = "Loading phone detector…";
+    detector = await ObjectDetector.createFromOptions(fs, {
+      baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite" },
+      runningMode:"VIDEO", scoreThreshold:0.35, maxResults:3, categoryAllowlist:["cell phone"] });
+  } catch(e){ detector = null; $("phoneOn").checked = false; $("phoneOn").disabled = true; }
+}
+
+function detectPhone(t){
+  if (!detector || !$("phoneOn").checked){ phoneBox = null; return false; }
+  if (t - lastDet > 150){            // run about 6x per second to keep it fast
+    lastDet = t;
+    const r = detector.detectForVideo(video, t);
+    const d = r.detections && r.detections[0];
+    if (d){ phoneBox = d.boundingBox; phoneSeenAt = t; }
+  }
+  if (t - phoneSeenAt > 700) phoneBox = null;
+  return !!phoneBox;
 }
 
 function stopStream(){
@@ -204,8 +232,15 @@ $("calBtn").onclick = () => { base = null; calib = []; };
 
 const blend = (cats, name) => (cats.find(c => c.categoryName === name) || {score:0}).score;
 
-function analyse(res){
+function analyse(res, phone){
   const now = performance.now();
+  if (phone && base){
+    if (!phoneSince) phoneSince = now;
+    if (now - phoneSince > 800){
+      if (!phoneFlag){ phoneFlag = true; if (sess) sess.phone++; }
+      return { state:"phone", v:0, lm: res.faceLandmarks && res.faceLandmarks[0] };
+    }
+  } else { phoneSince = 0; phoneFlag = false; }
   if (!res.faceLandmarks || !res.faceLandmarks.length){
     if (!base) return { state:"calibrating", v:null };
     if (!awaySince) awaySince = now;
@@ -245,26 +280,32 @@ function analyse(res){
   return { state:"focused", v:1, lm };
 }
 
-const colors = { focused:"#7be0b0", "looking away":"#ffc46b", drowsy:"#ff6b6b", away:"#ff6b6b", calibrating:"#8f7aa8" };
+const colors = { phone:"#ff6b6b", focused:"#7be0b0", "looking away":"#ffc46b", drowsy:"#ff6b6b", away:"#ff6b6b", calibrating:"#8f7aa8" };
 let lastSec = 0;
 function loop(){
   if (!running) return;
   if (video.readyState >= 2 && video.currentTime !== lastVT){
     lastVT = video.currentTime;
     if (overlay.width !== video.videoWidth){ overlay.width = video.videoWidth; overlay.height = video.videoHeight; }
-    const res = landmarker.detectForVideo(video, performance.now());
-    const a = analyse(res);
+    const ts = performance.now();
+    const res = landmarker.detectForVideo(video, ts);
+    const a = analyse(res, detectPhone(ts));
     ctx.clearRect(0,0,overlay.width,overlay.height);
+    if (phoneBox){
+      ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 4;
+      ctx.strokeRect(phoneBox.originX, phoneBox.originY, phoneBox.width, phoneBox.height);
+      ctx.fillStyle = "#ff6b6b33"; ctx.fillRect(phoneBox.originX, phoneBox.originY, phoneBox.width, phoneBox.height);
+    }
     if (a.lm){
       draw.drawConnectors(a.lm, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color:"#ff8fa355", lineWidth:0.6 });
       draw.drawConnectors(a.lm, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color:colors[a.state], lineWidth:2 });
     }
-    const b = $("badge"); b.textContent = a.state === "calibrating" ? "Calibrating – look at the screen" : a.state;
+    const b = $("badge"); b.textContent = a.state === "calibrating" ? "Calibrating – look at the screen" : a.state === "phone" ? "📱 phone detected" : a.state;
     b.style.color = colors[a.state];
     const t = performance.now();
     if (a.v !== null){
       frameWindow.push({t, v:a.v}); secondBuf.push(a.v);
-      if (sess){ if (a.state === "away") sess.awayF++; if (a.state === "looking away") sess.lookF++; sess.frames++; }
+      if (sess){ if (a.state === "away") sess.awayF++; if (a.state === "looking away") sess.lookF++; if (a.state === "phone") sess.phoneF++; sess.frames++; }
     }
     frameWindow = frameWindow.filter(f => t - f.t < 10000);
     if (frameWindow.length){
@@ -284,7 +325,7 @@ $("dur").onchange = () => { if (!sess) $("timer").textContent = fmt(+$("dur").va
 
 $("sessBtn").onclick = () => {
   if (sess) return endSession();
-  sess = { dur:+$("dur").value, left:+$("dur").value, secs:[], frames:0, awayF:0, lookF:0, drowsy:0, start:new Date() };
+  sess = { dur:+$("dur").value, left:+$("dur").value, secs:[], frames:0, awayF:0, lookF:0, phoneF:0, phone:0, drowsy:0, start:new Date() };
   $("sessBtn").textContent = "End session";
   $("feedback").textContent = "Session running… stay focused!";
   $("aiBtn").disabled = true; $("copyBtn").disabled = true;
@@ -313,13 +354,15 @@ function summary(s){
     awaySec: Math.round(s.awayF / Math.max(fps,1)),
     lookSec: Math.round(s.lookF / Math.max(fps,1)),
     drowsy: s.drowsy,
+    phoneCount: s.phone,
+    phoneSec: Math.round(s.phoneF / Math.max(fps,1)),
     start: part(s.secs.slice(0,third)), middle: part(s.secs.slice(third, 2*third)), end: part(s.secs.slice(2*third))
   };
 }
 function updateStats(){
   const m = summary(sess);
   $("sAvg").textContent = sess.secs.length ? m.focusPct + "%" : "–";
-  $("sAway").textContent = m.awaySec + " s"; $("sLook").textContent = m.lookSec + " s"; $("sDrowsy").textContent = m.drowsy;
+  $("sAway").textContent = m.awaySec + " s"; $("sLook").textContent = m.lookSec + " s"; $("sDrowsy").textContent = m.drowsy; $("sPhone").textContent = `${m.phoneCount}× · ${m.phoneSec} s`;
 }
 
 let lastSummary = null;
@@ -333,6 +376,7 @@ function endSession(){
   else tips.push("Your focus was low this time. Try a shorter session (e.g. 15 min) and remove distractions.");
   if (m.lookSec > m.minutes*60*0.15) tips.push("You looked away often: put your phone out of sight and close extra tabs.");
   if (m.awaySec > 60) tips.push("You left your desk for over a minute: plan breaks instead of taking them mid-session.");
+  if (m.phoneCount > 0) tips.push(`You picked up your phone ${m.phoneCount}× (${m.phoneSec} s in total): put it in another room or turn on Do Not Disturb.`);
   if (m.drowsy > 0) tips.push(`${m.drowsy} drowsy moment(s) detected: drink water, open a window or stand up briefly.`);
   if (m.end < m.start - 15) tips.push(`Focus dropped from ${m.start}% at the start to ${m.end}% at the end: shorter sessions may suit you better.`);
   $("feedback").textContent = reportText(m) + "\n\nTips:\n• " + tips.join("\n• ");
@@ -340,7 +384,7 @@ function endSession(){
   $("sessBtn").textContent = "Start session"; $("timer").textContent = fmt(+$("dur").value);
   $("aiBtn").disabled = false; $("copyBtn").disabled = false;
 }
-const reportText = m => `Session ${m.date}: ${m.minutes} min · focus ${m.focusPct}% (start ${m.start}% → middle ${m.middle}% → end ${m.end}%) · away ${m.awaySec} s · looking away ${m.lookSec} s · drowsy ${m.drowsy}×`;
+const reportText = m => `Session ${m.date}: ${m.minutes} min · focus ${m.focusPct}% (start ${m.start}% → middle ${m.middle}% → end ${m.end}%) · away ${m.awaySec} s · looking away ${m.lookSec} s · drowsy ${m.drowsy}× · phone ${m.phoneCount}× (${m.phoneSec} s)`;
 
 $("copyBtn").onclick = async () => {
   try { await navigator.clipboard.writeText($("feedback").textContent); $("copyBtn").textContent = "Copied ✓"; }
@@ -350,14 +394,31 @@ $("copyBtn").onclick = async () => {
 
 $("aiBtn").onclick = async () => {
   const key = $("key").value.trim();
+  if (!key && hasProxy){
+    $("aiBtn").disabled = true; $("aiBtn").textContent = "Asking Gemini…";
+    try {
+      const r = await fetch(PROXY_URL, { method:"POST", body: JSON.stringify(lastSummary) });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      $("feedback").textContent += "\n\nGemini coach:\n" + j.text;
+    } catch(e){ $("feedback").textContent += "\n\nGemini error: " + e.message; }
+    $("aiBtn").disabled = false; $("aiBtn").textContent = "Ask Gemini for coaching";
+    return;
+  }
   if (!key){ document.querySelector("details").open = true; $("key").focus(); return; }
-  const prompt = `You are a friendly study coach for a university student. Here are the numbers from a webcam focus session: ${JSON.stringify(lastSummary)} (focusPct = % of time looking at the screen with open eyes; start/middle/end = focus % per third; awaySec = seconds no face visible; lookSec = seconds looking away; drowsy = long eye closures). Give 3 short, specific, encouraging sentences of coaching. No markdown.`;
+  const prompt = `You are a friendly study coach for a university student. Here are the numbers from a webcam focus session: ${JSON.stringify(lastSummary)} (focusPct = % of time looking at the screen with open eyes; start/middle/end = focus % per third; awaySec = seconds no face visible; lookSec = seconds looking away; drowsy = long eye closures; phoneCount/phoneSec = how often and how long a phone was in hand). Give 3 short, specific, encouraging sentences of coaching. No markdown.`;
   $("aiBtn").disabled = true; $("aiBtn").textContent = "Asking Gemini…";
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent($("model").value.trim())}:generateContent?key=${encodeURIComponent(key)}`,
-      { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ contents:[{ parts:[{ text:prompt }] }] }) });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error ? j.error.message : r.status);
+    let r, j;
+    for (let attempt = 1; attempt <= 4; attempt++){
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent($("model").value.trim())}:generateContent?key=${encodeURIComponent(key)}`,
+        { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ contents:[{ parts:[{ text:prompt }] }] }) });
+      j = await r.json();
+      if (r.ok || ![429, 500, 503].includes(r.status) || attempt === 4) break;
+      $("aiBtn").textContent = `Gemini busy – retry ${attempt}/3…`;
+      await new Promise(res => setTimeout(res, attempt * 3000));
+    }
+    if (!r.ok) throw new Error((j.error ? j.error.message : r.status) + " (tried 4 times – please try again in a minute)");
     const text = j.candidates[0].content.parts.map(p => p.text).join("");
     $("feedback").textContent += "\n\nGemini coach:\n" + text.trim();
   } catch(e){ $("feedback").textContent += "\n\nGemini error: " + e.message; }
