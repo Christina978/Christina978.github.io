@@ -1,2 +1,2 @@
-Final Project
+Final Project: Focus Coach turns a regular webcam into a personal learning coach that shows when and why focus is lost and tells students how they can improve.
 https://christina978.github.io/focuscoach.html
