@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI in Practice Lunchtime Workshop</title>
+<style>
+:root{
+  --ink:#160b48; --muted:#718096; --purple:#6500e8; --purple-dark:#4e00bf;
+  --lav:#eeeaff; --line:#e7e8ef; --bg:#fbfcf8; --white:#fff;
+  --shadow:0 16px 38px rgba(34,28,83,.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Segoe UI",Arial,sans-serif}
+.page{max-width:1240px;margin:auto;padding:20px 22px 64px}
+.hero{
+  min-height:405px;display:grid;grid-template-columns:minmax(0,1.65fr) minmax(290px,.95fr);
+  gap:42px;align-items:start;padding:20px 0 42px;
+  background:linear-gradient(112deg,#fff 0%,#fbfcff 60%,#e8efff 100%);
+  border-radius:12px;
+}
+.hero-copy{padding:10px 0 0 0}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:30px;
+  background:#e9eaff;color:#5100c9;font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase
+}
+.eyebrow:before{content:"";width:6px;height:6px;border-radius:50%;background:#6900ef}
+h1{font-size:clamp(44px,6.6vw,66px);line-height:.99;letter-spacing:-.055em;margin:23px 0 18px;font-weight:850;max-width:660px}
+.lead{font-size:16px;line-height:1.55;color:#66758d;margin:0 0 22px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:11px;padding:13px 17px;font-size:13px;font-weight:800;transition:.18s}
+.btn-primary{background:var(--purple);color:#fff;box-shadow:0 8px 18px #6500e833}
+.btn-primary:hover{background:var(--purple-dark);transform:translateY(-1px)}
+.btn-secondary{background:#fff;color:var(--ink);border:1px solid #e1e3eb}
+.btn-secondary:hover{border-color:#b9a5ef}
+.glance{
+  background:#fff;border:1px solid #edf0f5;border-radius:22px;padding:24px 24px 17px;
+  box-shadow:var(--shadow);margin:0 0 0 auto;width:100%;max-width:390px
+}
+.glance h2{font-size:14px;margin:0 0 16px;font-weight:850}
+.glance-row{display:grid;grid-template-columns:28px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid #ececf2;align-items:start}
+.glance-row:last-child{border-bottom:0}
+.g-icon{width:28px;height:28px;border-radius:9px;background:#f0edff;display:grid;place-items:center;font-size:14px}
+.glance-row strong{display:block;font-size:12px;line-height:1.4;margin:2px 0 3px}
+.glance-row small{display:block;font-size:10px;color:#7d8798}
+.section{padding:54px 0 8px}
+.section-label{font-size:10px;font-weight:900;letter-spacing:.13em;color:#6100db;text-transform:uppercase;margin:0 0 12px}
+h2.section-title{font-size:clamp(29px,4vw,37px);line-height:1.08;letter-spacing:-.045em;max-width:570px;margin:0 0 12px}
+.section-intro{font-size:13px;color:#758197;line-height:1.6;max-width:600px;margin:0 0 24px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:#fff;border:1px solid #e8e9ee;border-radius:16px;padding:22px 19px;box-shadow:0 5px 16px rgba(26,27,65,.035)}
+.card-icon{font-size:19px;margin-bottom:12px}
+.card h3{font-size:14px;margin:0 0 7px;font-weight:850}
+.card p{font-size:12px;line-height:1.6;color:#788398;margin:0}
+.agenda-wrap{display:grid;grid-template-columns:1fr .85fr;gap:24px;align-items:start}
+.agenda-list{background:#fff;border:1px solid var(--line);border-radius:16px;padding:8px 22px}
+.agenda-item{display:flex;gap:17px;padding:15px 0;border-bottom:1px solid #ececf2}
+.agenda-item:last-child{border:0}
+.agenda-time{font-size:12px;font-weight:850;color:#6500df;min-width:88px}
+.agenda-item strong{display:block;font-size:13px;margin-bottom:3px}
+.agenda-item span{font-size:11px;color:#7a8799}
+.note{background:#f0edff;border-radius:16px;padding:23px}
+.note h3{margin:0 0 8px;font-size:16px}
+.note p{margin:0;color:#6d6685;font-size:12px;line-height:1.65}
+.register{background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px;max-width:760px}
+.register-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:block;font-size:11px;font-weight:750;color:#4f5870}
+input,select{width:100%;margin-top:6px;padding:11px 12px;border:1px solid #dfe3eb;border-radius:9px;font:13px inherit;color:var(--ink);background:#fff}
+input:focus,select:focus{outline:2px solid #e6dcff;border-color:#a98be9}
+.register .btn{border:0;cursor:pointer;margin-top:16px}
+.form-note{font-size:10px;color:#8a93a3;margin:10px 0 0}
+#success{display:none;margin-top:13px;padding:12px;border-radius:10px;background:#eefaf3;color:#216b43;font-size:12px}
+footer{padding-top:38px;color:#9aa2b1;font-size:10px}
+@media(max-width:760px){
+ .page{padding:12px 14px 42px}
+ .hero{grid-template-columns:1fr;gap:25px;padding:14px 8px 30px}
+ h1{font-size:clamp(43px,12vw,60px)}
+ .glance{max-width:none;margin:0}
+ .cards{grid-template-columns:1fr}
+ .agenda-wrap{grid-template-columns:1fr}
+ .register-grid{grid-template-columns:1fr}
+ .section{padding-top:42px}
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="hero" id="top">
+    <div class="hero-copy">
+      <span class="eyebrow">A practical lunchtime session</span>
+      <h1>AI in Practice<br>Lunchtime<br>Workshop</h1>
+      <p class="lead">In 60 minutes, learn to hand off repetitive work to AI.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#register">Register Now</a>
+        <a class="btn btn-secondary" href="#agenda">View the agenda</a>
+      </div>
+    </div>
+    <aside class="glance" aria-label="Workshop details">
+      <h2>Your workshop at a glance</h2>
+      <div class="glance-row"><span class="g-icon">🗓️</span><div><strong>Friday, November 27, 2026</strong><small>Mark your calendar</small></div></div>
+      <div class="glance-row"><span class="g-icon">⏱️</span><div><strong>12:00–13:00</strong><small>One focused hour</small></div></div>
+      <div class="glance-row"><span class="g-icon">📍</span><div><strong>8F Multipurpose Classroom</strong><small>Online participation also available</small></div></div>
+      <div class="glance-row"><span class="g-icon">🎤</span><div><strong>Digital Transformation Team</strong><small>Internal speaker team</small></div></div>
+    </aside>
+  </section>
+
+  <section class="section" id="takeaways">
+    <p class="section-label">What you'll take away</p>
+    <h2 class="section-title">Less busywork. More time for<br>meaningful work.</h2>
+    <p class="section-intro">Discover simple, practical ways to use AI as a helpful work partner—starting with tasks you already do every day.</p>
+    <div class="cards">
+      <article class="card"><div class="card-icon">📝</div><h3>Summarize meeting notes</h3><p>Turn long notes and discussions into clear summaries, key decisions and action items.</p></article>
+      <article class="card"><div class="card-icon">✍️</div><h3>Write a first draft</h3><p>Get started faster with AI support for a first draft of emails, updates or other copy.</p></article>
+      <article class="card"><div class="card-icon">🗂️</div><h3>Build your prompt library</h3><p>Create a personal collection of reusable prompts for recurring tasks and workflows.</p></article>
+    </div>
+  </section>
+
+  <section class="section" id="agenda">
+    <p class="section-label">The 60-minute agenda</p>
+    <h2 class="section-title">A practical hour, from first prompt to useful workflow.</h2>
+    <p class="section-intro">A short, hands-on session focused on small ways to make everyday work easier.</p>
+    <div class="agenda-wrap">
+      <div class="agenda-list">
+        <div class="agenda-item"><div class="agenda-time">12:00–12:05</div><div><strong>Welcome & introduction</strong><span>What AI agents can help with at work</span></div></div>
+        <div class="agenda-item"><div class="agenda-time">12:05–12:20</div><div><strong>Meeting notes to action items</strong><span>Turn a long discussion into a useful summary</span></div></div>
+        <div class="agenda-item"><div class="agenda-time">12:20–12:35</div><div><strong>From blank page to first draft</strong><span>Use AI to get a helpful first version started</span></div></div>
+        <div class="agenda-item"><div class="agenda-time">12:35–12:50</div><div><strong>Create your prompt library</strong><span>Build reusable prompts for recurring tasks</span></div></div>
+        <div class="agenda-item"><div class="agenda-time">12:50–13:00</div><div><strong>Questions & next steps</strong><span>Take one practical idea back to your team</span></div></div>
+      </div>
+      <aside class="note"><h3>Come as you are</h3><p>No technical background is required. Bring a laptop if you would like to follow along. You can join in person at the 8F Multipurpose Classroom or participate online.</p></aside>
+    </div>
+  </section>
+
+  <section class="section" id="register">
+    <p class="section-label">Save your spot</p>
+    <h2 class="section-title">Join us for lunch—and a smarter way to work.</h2>
+    <p class="section-intro">Friday, November 27, 2026 · 12:00–13:00</p>
+    <form class="register" id="registration">
+      <div class="register-grid">
+        <label>Your name<input name="name" autocomplete="name" placeholder="Enter your name" required></label>
+        <label>Department<input name="department" placeholder="Your department" required></label>
+        <label>Work email<input type="email" name="email" autocomplete="email" placeholder="name@company.com" required></label>
+        <label>How will you attend?
+          <select name="attendance" required><option value="">Select attendance</option><option>In person – 8F Multipurpose Classroom</option><option>Online</option></select>
+        </label>
+      </div>
+      <button class="btn btn-primary" type="submit">Register for the workshop</button>
+      <p class="form-note">Demo form only: submitting displays a confirmation on this page. It does not send or store your registration.</p>
+      <div id="success" role="status">Thanks for your interest! This is a demo confirmation; your registration has not been submitted to an organiser.</div>
+    </form>
+  </section>
+  <footer>AI in Practice Lunchtime Workshop · Hosted by the Digital Transformation Team</footer>
+</main>
+<script>
+document.getElementById('registration').addEventListener('submit',function(event){
+  event.preventDefault();
+  if(!this.reportValidity()) return;
+  document.getElementById('success').style.display='block';
+});
+</script>
+</body>
+</html>
